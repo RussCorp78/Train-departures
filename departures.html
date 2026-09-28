@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sheffield Departures</title>
+<style>
+body {
+margin: 0;
+padding: 20px;
+background: #111;
+color: white;
+font-family: Arial, Helvetica, sans-serif;
+}
+.train-board {
+width: 100%;
+max-width: 900px;
+margin: auto;
+background: #050505;
+border: 2px solid #333;
+box-sizing: border-box;
+}
+/* ================================
+HEADER
+================================= */
+.board-row {
+display: grid;
+grid-template-columns:
+90px
+1fr
+70px
+120px;
+align-items: center;
+box-sizing: border-box;
+}
+.header-row {
+background: #222;
+color: #fff;
+font-weight: bold;
+padding: 12px 10px;
+}
+/* ================================
+TRAIN ROW
+================================= */
+.train-row {
+min-height: 55px;
+padding: 8px 10px;
+border-top: 1px solid #333;
+font-size: 18px;
+}
+.col-time {
+font-weight: bold;
+}
+.col-dest {
+overflow: hidden;
+white-space: nowrap;
+text-overflow: ellipsis;
+}
+.col-plat {
+text-align: center;
+}
+.col-status {
+text-align: right;
+}
+/* ================================
+STATUS
+================================= */
+.on-time {
+color: #7cff7c;
+}
+.delayed {
+color: #ffb347;
+}
+.cancelled {
+color: #ff5555;
+font-weight: bold;
+}
+/* ================================
+DETAILS / CALLING POINTS
+================================= */
+.details-row {
+display: block;
+overflow: hidden;
+border-top:
+1px solid #222;
+background:
+#111;
+height:
+30px;
+position:
+relative;
+}
+.scrolling-window {
+width: 100%;
+overflow: hidden;
+white-space: nowrap;
+}
+.scrolling-text {
+display: inline-block;
+padding: 6px 0 6px 100%;
+font-size: 14px;
+color: #bbb;
+animation: scrollText linear infinite;
+animation-duration: var(--scroll-duration, 25s);
+}
+@keyframes scrollText {
+0% {
+transform: translateX(0);
+}
+100% {
+transform: translateX(-100%);
+}
+}
+/* ================================
+LOADING / ERROR
+================================= */
+#message {
+padding:
+15px;
+text-align:
+center;
+color:
+#aaa;
+}
+#lastUpdated {
+max-width:
+900px;
+margin:
+10px auto 0;
+text-align:
+right;
+font-size:
+12px;
+color:
+#777;
+}
+/* ================================
+MOBILE
+================================= */
+@media (max-width: 600px) {
+.board-row {
+grid-template-columns:
+65px
+1fr
+50px
+85px;
+}
+.train-row {
+font-size:
+15px;
+}
+.header-row {
+font-size:
+13px;
+}
+.scrolling-text {
+font-size:
+12px;
+}
+}
+</style>
+</head>
+<body>
+<div class="train-board">
+<!-- ================================
+BOARD HEADER
+================================= -->
+<div class="board-row header-row">
+<span class="col-time">
+Dep
+</span>
+<span class="col-dest">
+Destination
+</span>
+<span class="col-plat">
+Plat
+</span>
+<span class="col-status">
+Expected
+</span>
+</div>
+<!-- ================================
+LIVE DEPARTURES
+================================= -->
+<div id="departures">
+<div id="message">
+Loading Sheffield departures...
+</div>
+</div>
+</div>
+<div id="lastUpdated">
+Updating...
+</div>
+<script>
+/* =====================================================
+SETTINGS
+===================================================== */
+/*
+YOUR CLOUDFLARE WORKER URL
+Example:
+https://your-worker.example.workers.dev
+*/
+const CLOUDFLARE_URL =
+"https://falling-scene-1424.paul-russell.workers.dev";
+/*
+Sheffield railway station
+*/
+const STATION =
+"SHF";
+/*
+Number of trains displayed
+*/
+const NUMBER_OF_DEPARTURES =
+10;
+/*
+Refresh every 60 seconds
+*/
+const REFRESH_INTERVAL =
+60000;
+/* =====================================================
+GET SHEFFIELD DEPARTURES
+===================================================== */
+async function loadDepartures() {
+const container =
+document.getElementById(
+"departures"
+);
+const lastUpdated =
+document.getElementById(
+"lastUpdated"
+);
+try {
+const url =
+CLOUDFLARE_URL +
+"?type=train&station=" +
+STATION;
+console.log(
+"Loading departures:",
+url
+);
+const response =
+await fetch(url);
+if (!response.ok) {
+throw new Error(
+"HTTP " +
+response.status
+);
+}
+const data =
+await response.json();
+if (
+!data.departures ||
+!Array.isArray(
+data.departures
+)
+) {
+throw new Error(
+"No departures returned."
+);
+}
+/*
+Clear old board
+*/
+container.innerHTML = "";
+/*
+Get the next departures
+*/
+const departures =
+data.departures.slice(
+0,
+NUMBER_OF_DEPARTURES
+);
+/*
+Create each train.
+Calling points are loaded individually.
+*/
+for (
+const train of departures
+) {
+await createTrain(
+train,
+container
+);
+}
+/*
+Last updated time
+*/
+const now =
+new Date();
+lastUpdated.textContent =
+"Last updated: " +
+now.toLocaleTimeString(
+[],
+{
+hour: "2-digit",
+minute: "2-digit"
+}
+);
+} catch (error) {
+console.error(
+"Railway error:",
+error
+);
+container.innerHTML =
+'<div id="message">' +
+'Unable to load Sheffield departures.' +
+'<br><br>' +
+error.message +
+'</div>';
+lastUpdated.textContent =
+"Update failed";
+}
+}
+/* =====================================================
+CREATE TRAIN
+===================================================== */
+async function createTrain(
+train,
+container
+) {
+/*
+Main train row
+*/
+const trainRow =
+document.createElement(
+"div"
+);
+trainRow.className =
+"board-row train-row";
+/*
+Departure time
+*/
+const time =
+document.createElement(
+"span"
+);
+time.className =
+"col-time";
+time.textContent =
+train.scheduled ||
+"--:--";
+/*
+Destination
+*/
+const destination =
+document.createElement(
+"span"
+);
+destination.className =
+"col-dest";
+destination.textContent =
+train.destination ||
+"Unknown";
+/*
+Platform
+*/
+const platform =
+document.createElement(
+"span"
+);
+platform.className =
+"col-plat";
+platform.textContent =
+train.platform ||
+"-";
+/*
+Expected
+*/
+const status =
+document.createElement(
+"span"
+);
+status.className =
+"col-status";
+if (
+train.is_cancelled === true
+) {
+status.textContent =
+"CANCELLED";
+status.classList.add(
+"cancelled"
+);
+} else if (
+train.expected &&
+train.expected !==
+"On time" &&
+train.expected !==
+train.scheduled
+) {
+status.textContent =
+train.expected;
+status.classList.add(
+"delayed"
+);
+} else {
+status.textContent =
+"On time";
+status.classList.add(
+"on-time"
+);
+}
+/*
+Add columns
+*/
+trainRow.appendChild(
+time
+);
+trainRow.appendChild(
+destination
+);
+trainRow.appendChild(
+platform
+);
+trainRow.appendChild(
+status
+);
+/*
+Add train row
+*/
+container.appendChild(
+trainRow
+);
+/*
+Calling points row
+*/
+const detailsRow =
+document.createElement(
+"div"
+);
+detailsRow.className =
+"details-row";
+const scrollingWindow =
+document.createElement(
+"div"
+);
+scrollingWindow.className =
+"scrolling-window";
+const scrollingText =
+document.createElement(
+"div"
+);
+scrollingText.className =
+"scrolling-text";
+scrollingText.textContent =
+"Loading calling points...";
+scrollingWindow.appendChild(
+scrollingText
+);
+detailsRow.appendChild(
+scrollingWindow
+);
+container.appendChild(
+detailsRow
+);
+/*
+If we have a service ID,
+request its calling points.
+*/
+if (train.service_id) {
+try {
+const serviceUrl =
+CLOUDFLARE_URL +
+"?type=service&service=" +
+encodeURIComponent(
+train.service_id
+);
+const response =
+await fetch(
+serviceUrl
+);
+if (!response.ok) {
+throw new Error(
+"Service HTTP " +
+response.status
+);
+}
+const service =
+await response.json();
+/*
+Build calling point list
+*/
+let points = [];
+if (
+service.calling_points &&
+Array.isArray(
+service.calling_points
+)
+) {
+points =
+service.calling_points
+.filter(
+point =>
+point.is_cancelled !== true
+)
+.map(
+point =>
+point.station_name
+);
+}
+/*
+Add destination if necessary.
+The API response may already contain
+the destination as the final calling
+point, so avoid adding it twice.
+*/
+if (
+service.destination &&
+!points.includes(
+service.destination
+)
+) {
+points.push(
+service.destination
+);
+}
+/*
+Build the scrolling text
+*/
+if (points.length > 0) {
+scrollingText.textContent =
+"Calling at: " +
+points.join(
+" • "
+);
+const textLength = scrollingText.textContent.length;
+const duration = Math.max(15, textLength * 0.12);
+
+scrollingText.style.setProperty(
+    "--scroll-duration",
+    duration + "s"
+    );
+} else {
+/*
+Fall back to useful information
+*/
+let fallback =
+service.operator ||
+train.operator ||
+"";
+if (
+train.train_length
+) {
+if (
+fallback !== ""
+) {
+fallback +=
+" • ";
+}
+fallback +=
+train.train_length +
+" coaches";
+}
+scrollingText.textContent =
+fallback ||
+"Calling points unavailable.";
+}
+} catch (error) {
+console.error(
+"Calling point error:",
+error
+);
+scrollingText.textContent =
+"Calling points unavailable.";
+}
+} else {
+scrollingText.textContent =
+"Calling points unavailable.";
+}
+}
+/* =====================================================
+INITIAL LOAD
+===================================================== */
+loadDepartures();
+/* =====================================================
+AUTOMATIC REFRESH
+
+setInterval(
+loadDepartures,
+REFRESH_INTERVAL
+);
+===================================================== */
+</script>
+</body>
+</html>
