@@ -67,44 +67,104 @@
     <!-- The display board showing the selected platform -->
     <div id="displayBoard" class="display-board">Platform: --</div>
 
-    <script type="text/javascript">
-        // 1. Get references to the HTML elements
-        var container = document.getElementById("buttonContainer");
-        var display = document.getElementById("displayBoard");
+  <script type="text/javascript">
+    // --- CONFIGURATION ---
+    var workerUrl = "https://workers.dev"; // Your Cloudflare Worker URL
+    var stationCode = "SFO"; // Change to your target station CRS code (e.g., PAD, MAN, SFO)
+    
+    var container = document.getElementById("buttonContainer");
+    var display = document.getElementById("displayBoard");
 
-        // 2. Loop to dynamically create 11 small buttons (Platforms 1 to 11)
-        for (var i = 1; i <= 11; i++) {
-            var btn = document.createElement("button");
-            btn.className = "platform-btn";
-            btn.innerText = i;
-            
-            // Assign the click event using JScript-compatible syntax
-            btn.onclick = function() {
-                var platformNum = this.innerText;
-                updateDisplay(platformNum);
-            };
-            
-            container.appendChild(btn);
+    // Generate 11 platform buttons
+    for (var i = 1; i <= 11; i++) {
+        var btn = document.createElement("button");
+        btn.className = "platform-btn";
+        btn.innerText = i;
+        
+        btn.onclick = function() {
+            var platformNum = this.innerText;
+            updateDisplay(platformNum);
+        };
+        
+        container.appendChild(btn);
+    }
+
+    function updateDisplay(platformNumber) {
+        display.innerText = "Platform " + platformNumber + " - Loading...";
+        fetchPlatformData(platformNumber);
+    }
+
+    // Legacy JScript network request (compatible with older IE / WSH / ASP engines)
+    function fetchPlatformData(platformNumber) {
+        var xhr;
+        if (typeof XMLHttpRequest !== 'undefined') {
+            xhr = new XMLHttpRequest();
+        } else {
+            try { xhr = new ActiveXObject("MSXML2.XMLHTTP.3.0"); } catch(e) { xhr = null; }
         }
 
-        // 3. Function to update the display board and prepare for Cloudflare
-        function updateDisplay(platformNumber) {
-            // Update the visual board using JScript string concatenation
-            display.innerText = "Platform: " + platformNumber + " (Loading...)";
-            
-            // Call your Cloudflare worker function
-            fetchPlatformData(platformNumber);
+        if (!xhr) {
+            display.innerText = "Error: AJAX not supported in this environment.";
+            return;
         }
 
-        // 4. Placeholder function for your Cloudflare Worker integration
-        function fetchPlatformData(platformNumber) {
-            // This is where we will hook up your Cloudflare Worker URL later
-            // For now, it logs the platform selection
-            if (typeof console !== 'undefined') {
-                console.log("Ready to fetch data for Platform: " + platformNumber);
+        // Build the query URL using JScript string concatenation
+        var target = workerUrl + "?type=train&station=" + encodeURIComponent(stationCode);
+
+        xhr.open("GET", target, true);
+        
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4) {
+                if (xhr.status === 200) {
+                    processTrainData(xhr.responseText, platformNumber);
+                } else {
+                    display.innerText = "Error loading data (Status: " + xhr.status + ")";
+                }
             }
+        };
+        
+        xhr.send(null);
+    }
+
+    // Parse the JSON array and filter by the selected platform number
+    function processTrainData(jsonText, platformNumber) {
+        try {
+            // Using modern JSON parsing if available, or eval fallback for legacy JScript
+            var responseData = (typeof JSON !== 'undefined') ? JSON.parse(jsonText) : eval('(' + jsonText + ')');
+            
+            // Note: Adjust 'departures' or 'services' depending on the exact schema structure of api.busesandtrains.co.uk
+            var trains = responseData.departures || responseData.services || responseData; 
+            var outputHtml = "<b>Platform " + platformNumber + " Departures:</b><br>";
+            var foundAny = false;
+
+            if (trains && trains.length > 0) {
+                for (var i = 0; i < trains.length; i++) {
+                    var train = trains[i];
+                    
+                    // Filter: Compare train platform against chosen button string
+                    if (String(train.platform) === String(platformNumber)) {
+                        foundAny = true;
+                        var time = train.std || train.aimed_departure_time || "00:00";
+                        var dest = train.destination_name || train.destination || "Unknown Destination";
+                        var status = train.etd || train.status || "On Time";
+                        
+                        outputHtml += time + " to " + dest + " (" + status + ")<br>";
+                    }
+                }
+            }
+
+            if (!foundAny) {
+                outputHtml += "No upcoming departures scheduled.";
+            }
+
+            display.innerHTML = outputHtml;
+
+        } catch (e) {
+            display.innerText = "Error processing train timetables.";
         }
-    </script>
+    }
+</script>
+
   <a href="departures.html"> Sheffield Departures </a>
 <br>
   <a href="test.html"> test page </a>
