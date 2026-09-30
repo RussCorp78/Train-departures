@@ -134,18 +134,25 @@
             var outputHtml = "<b>Platform " + platformNumber + " Next Trains:</b><br>";
             var matchedTrains = [];
 
-            if (trains && trains.length > 0) {
-                for (var i = 0; i < trains.length; i++) {
-                    var train = trains[i];
-                    var apiPlatform = train.platform ? String(train.platform).toLowerCase() : "";
-                    var targetPrefix = String(platformNumber).toLowerCase();
+if (trains && trains.length > 0) {
+    for (var i = 0; i < trains.length; i++) {
 
-                    // Match if platform matches exactly OR starts with the main number (e.g., "2" matches "2", "2a", "2b", "2c")
-                    if (apiPlatform === targetPrefix || apiPlatform.indexOf(targetPrefix) === 0) {
-                        matchedTrains.push(train);
-                    }
-                }
-            }
+        var train = trains[i];
+
+        var apiPlatform = train.platform
+            ? String(train.platform).toLowerCase()
+            : "";
+
+        var targetPrefix = String(platformNumber).toLowerCase();
+
+        // Match 2, 2A, 2B, 2C etc.
+        if (apiPlatform === targetPrefix ||
+            apiPlatform.indexOf(targetPrefix) === 0) {
+
+            matchedTrains.push(train);
+        }
+    }
+}
 
             // Render a maximum of 3 trains
             var limit = matchedTrains.length > 3 ? 3 : matchedTrains.length;
