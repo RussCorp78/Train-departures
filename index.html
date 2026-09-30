@@ -2,6 +2,34 @@
 
 <head>
   <link rel="stylesheet" href="style.css">
+<style>
+        /* Container for the buttons */
+        .button-row {
+            display: block;
+            margin-bottom: 20px;
+        }
+        /* Styling for the 11 small buttons */
+        .platform-btn {
+            width: 35px;
+            height: 35px;
+            margin-right: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            text-align: center;
+        }
+        /* Styling for the display board */
+        .display-board {
+            width: 300px;
+            padding: 15px;
+            background-color: #111;
+            color: #ff9900; /* Classic dot-matrix amber color */
+            font-family: monospace;
+            font-size: 20px;
+            border-radius: 4px;
+            border: 2px solid #333;
+        }
+    </style>
+  
 </head>
   
 <body> 
@@ -29,6 +57,53 @@
     </div>
   </div>
 </div>
+  
+    <h3>Select Platform:</h3>
+    <!-- Container where the 11 buttons will be generated -->
+    <div id="buttonContainer" class="button-row"></div>
+
+    <h3>Display Board:</h3>
+    <!-- The display board showing the selected platform -->
+    <div id="displayBoard" class="display-board">Platform: --</div>
+
+    <script type="text/javascript">
+        // 1. Get references to the HTML elements
+        var container = document.getElementById("buttonContainer");
+        var display = document.getElementById("displayBoard");
+
+        // 2. Loop to dynamically create 11 small buttons (Platforms 1 to 11)
+        for (var i = 1; i <= 11; i++) {
+            var btn = document.createElement("button");
+            btn.className = "platform-btn";
+            btn.innerText = i;
+            
+            // Assign the click event using JScript-compatible syntax
+            btn.onclick = function() {
+                var platformNum = this.innerText;
+                updateDisplay(platformNum);
+            };
+            
+            container.appendChild(btn);
+        }
+
+        // 3. Function to update the display board and prepare for Cloudflare
+        function updateDisplay(platformNumber) {
+            // Update the visual board using JScript string concatenation
+            display.innerText = "Platform: " + platformNumber + " (Loading...)";
+            
+            // Call your Cloudflare worker function
+            fetchPlatformData(platformNumber);
+        }
+
+        // 4. Placeholder function for your Cloudflare Worker integration
+        function fetchPlatformData(platformNumber) {
+            // This is where we will hook up your Cloudflare Worker URL later
+            // For now, it logs the platform selection
+            if (typeof console !== 'undefined') {
+                console.log("Ready to fetch data for Platform: " + platformNumber);
+            }
+        }
+    </script>
   <a href="departures.html"> Sheffield Departures </a>
 <br>
   <a href="test.html"> test page </a>
