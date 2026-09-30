@@ -938,6 +938,7 @@ body {
 const CLOUDFLARE_URL =
   "https://falling-scene-1424.paul-russell.workers.dev";
 
+  let STATION = "SHF"
 
 /*
 How often to update the train position while the map
@@ -1336,7 +1337,7 @@ async function loadDepartures() {
 
     const response =
       await fetch(
-        `${CLOUDFLARE_URL}?type=train&station=SHF`
+        `${CLOUDFLARE_URL}?type=train&station=${encodeURIComponent(STATION)}`
       );
 
 
@@ -1472,30 +1473,6 @@ async function createTrain(
   platform.textContent =
     train.platform || "--";
 
-/* code to add somewhere
-const params =
-  new URLSearchParams({
-
-    type:
-      "find-train",
-
-    station:
-      STATION,
-
-    time:
-      departure.scheduled || "",
-
-    destination:
-      departure.destination || "",
-
-    origin:
-      departure.origin || "",
-
-    operator:
-      departure.operator || ""
-
-  });
-  up to here */
 
   /* -------------------------------------------------------
      Expected
@@ -1801,27 +1778,27 @@ async function openTrainMap(
     */
 
     const params =
-      new URLSearchParams({
+  new URLSearchParams({
 
-        type:
-          "find-train",
+    type:
+      "find-train",
 
-        station:
-          "SHF",
+    station:
+      STATION,
 
-        time:
-          departure.scheduled || "",
+    time:
+      departure.scheduled || "",
 
-        destination:
-          departure.destination || "",
+    destination:
+      departure.destination || "",
 
-        origin:
-          departure.origin || "Sheffield",
+    origin:
+      departure.origin || "",
 
-        operator:
-          departure.operator || ""
+    operator:
+      departure.operator || ""
 
-      });
+  });
 
 
     const response =
