@@ -1187,7 +1187,7 @@ function selectStation(station) {
   STATION = station.station_code;
   stationInput.value = station.station_name;
   document.getElementById("stationTitle").textContent =
-    '${currentStation.station_name} Departures'
+    '${currentStation.station_name} Departures ${currentStation.station_name}';
   stationSuggestions.style.display = "none";
   stationStatus.textContent = `${station.station_name} (${station.station_code})`;
   clearStation.style.display = "block";
