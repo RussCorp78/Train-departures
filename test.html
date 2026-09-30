@@ -10,7 +10,7 @@
   content="width=device-width, initial-scale=1.0"
 >
 
-<title>Sheffield Departures</title>
+<title> Departures Board </title>
 
 
 <style>
@@ -818,7 +818,7 @@ body {
 <div class="board">
 
   <div class="board-title">
-    Sheffield Departures
+    <h1 id="stationTitle">Sheffield Departures</h1>
   </div>
 
 
@@ -1046,17 +1046,13 @@ async function loadStations() {
     */
 
     const currentStation =
-      stations.find(
-        station =>
-          station.station_code === STATION
+      stations.find(station => station.station_code === STATION
       );
-
-
     if (currentStation) {
+      stationInput.value = currentStation.station_name;
 
-      stationInput.value =
-        currentStation.station_name;
-
+      document.getElementId("stationTitle").textContent =
+        '${currentStation.station_name} Departures';
     }
 
 
@@ -1186,40 +1182,16 @@ function searchStations(
    SELECT STATION
    ========================================================= */
 
-function selectStation(
-  station
-) {
-
-  /*
-  THIS is where STATION changes.
-  */
-
-  STATION =
-    station.station_code;
-
-
-  stationInput.value =
-    station.station_name;
-
-
-  stationSuggestions.style.display =
-    "none";
-
-
-  stationStatus.textContent =
-    `${station.station_name} (${station.station_code})`;
-
-
-  clearStation.style.display =
-    "block";
-
-
-  /*
-  Reload the departure board using
-  the newly selected station.
-  */
-
-  loadDepartures();
+function selectStation(station) {
+  /* THIS is where STATION changes*/
+  STATION = station.station_code;
+  stationInput.value = station.station_name;
+  document.getElementById("stationTitle").textContent =
+    '${station.station_name} Departures ${station.station_code}'
+  stationSuggestions.style.display = "none";
+  stationStatus.textContent = `${station.station_name} (${station.station_code})`;
+  clearStation.style.display = "block";
+  loadDepartures(); /* Reload the departure board using the newly selected station. */
 }
 
 
