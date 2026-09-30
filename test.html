@@ -1,0 +1,1876 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
+
+<title>Sheffield Departures</title>
+
+
+<!-- ==================================================
+     LEAFLET MAP
+================================================== -->
+
+<link
+rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+
+
+<style>
+
+body {
+    margin: 0;
+    padding: 20px;
+    background: #111;
+    color: white;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+
+/* ==================================================
+   TRAIN BOARD
+================================================== */
+
+.train-board {
+
+    width: 100%;
+    max-width: 900px;
+
+    margin: auto;
+
+    background: #050505;
+
+    border: 2px solid #333;
+
+    box-sizing: border-box;
+}
+
+
+/* ==================================================
+   HEADER
+================================================== */
+
+.board-row {
+
+    display: grid;
+
+    grid-template-columns:
+        90px
+        1fr
+        70px
+        120px;
+
+    align-items: center;
+
+    box-sizing: border-box;
+}
+
+
+.header-row {
+
+    background: #222;
+
+    color: #fff;
+
+    font-weight: bold;
+
+    padding: 12px 10px;
+}
+
+
+/* ==================================================
+   TRAIN ROW
+================================================== */
+
+.train-row {
+
+    min-height: 55px;
+
+    padding: 8px 10px;
+
+    border-top: 1px solid #333;
+
+    font-size: 18px;
+
+    cursor: pointer;
+
+    transition:
+        background 0.15s ease;
+}
+
+
+.train-row:hover {
+
+    background: #181818;
+}
+
+
+.train-row:active {
+
+    background: #222;
+}
+
+
+.col-time {
+
+    font-weight: bold;
+}
+
+
+.col-dest {
+
+    overflow: hidden;
+
+    white-space: nowrap;
+
+    text-overflow: ellipsis;
+}
+
+
+.col-plat {
+
+    text-align: center;
+}
+
+
+.col-status {
+
+    text-align: right;
+}
+
+
+/* ==================================================
+   STATUS
+================================================== */
+
+.on-time {
+
+    color: #7cff7c;
+}
+
+
+.delayed {
+
+    color: #ffb347;
+}
+
+
+.cancelled {
+
+    color: #ff5555;
+
+    font-weight: bold;
+}
+
+
+/* ==================================================
+   DETAILS / CALLING POINTS
+================================================== */
+
+.details-row {
+
+    display: block;
+
+    overflow: hidden;
+
+    border-top: 1px solid #222;
+
+    background: #111;
+
+    height: 30px;
+
+    position: relative;
+}
+
+
+.scrolling-window {
+
+    width: 100%;
+
+    overflow: hidden;
+
+    white-space: nowrap;
+}
+
+
+.scrolling-text {
+
+    display: inline-block;
+
+    padding: 6px 0 6px 100%;
+
+    font-size: 14px;
+
+    color: #bbb;
+
+    animation:
+        scrollText linear infinite;
+
+    animation-duration:
+        var(--scroll-duration, 25s);
+}
+
+
+@keyframes scrollText {
+
+    0% {
+
+        transform:
+            translateX(0);
+    }
+
+    100% {
+
+        transform:
+            translateX(-100%);
+    }
+}
+
+
+/* ==================================================
+   LOADING / ERROR
+================================================== */
+
+#message {
+
+    padding: 15px;
+
+    text-align: center;
+
+    color: #aaa;
+}
+
+
+#lastUpdated {
+
+    max-width: 900px;
+
+    margin: 10px auto 0;
+
+    text-align: right;
+
+    font-size: 12px;
+
+    color: #777;
+}
+
+
+/* ==================================================
+   MAP OVERLAY
+================================================== */
+
+#mapOverlay {
+
+    display: none;
+
+    position: fixed;
+
+    inset: 0;
+
+    z-index: 1000;
+
+    background:
+        rgba(0, 0, 0, 0.82);
+
+    padding: 20px;
+
+    box-sizing: border-box;
+}
+
+
+/* ==================================================
+   MAP WINDOW
+================================================== */
+
+#mapPanel {
+
+    position: relative;
+
+    width: 100%;
+
+    max-width: 900px;
+
+    height: 90vh;
+
+    margin: auto;
+
+    background: #111;
+
+    border: 2px solid #444;
+
+    border-radius: 8px;
+
+    overflow: hidden;
+
+    box-sizing: border-box;
+}
+
+
+#map {
+
+    position: absolute;
+
+    inset: 0;
+}
+
+
+/* ==================================================
+   MAP INFORMATION
+================================================== */
+
+#trainInfo {
+
+    position: absolute;
+
+    z-index: 1001;
+
+    top: 10px;
+
+    left: 10px;
+
+    right: 60px;
+
+    background:
+        rgba(0, 0, 0, 0.88);
+
+    padding: 12px;
+
+    border-radius: 6px;
+
+    box-shadow:
+        0 2px 8px rgba(0,0,0,0.5);
+
+    font-size: 14px;
+
+    line-height: 1.4;
+
+    pointer-events: none;
+}
+
+
+#trainInfo .title {
+
+    font-size: 18px;
+
+    font-weight: bold;
+
+    margin-bottom: 4px;
+}
+
+
+#trainInfo .small {
+
+    color: #bbb;
+
+    font-size: 12px;
+}
+
+
+/* ==================================================
+   CLOSE BUTTON
+================================================== */
+
+#closeMap {
+
+    position: absolute;
+
+    z-index: 1002;
+
+    top: 10px;
+
+    right: 10px;
+
+    width: 40px;
+
+    height: 40px;
+
+    border: none;
+
+    border-radius: 50%;
+
+    background: #222;
+
+    color: white;
+
+    font-size: 24px;
+
+    cursor: pointer;
+}
+
+
+#closeMap:hover {
+
+    background: #444;
+}
+
+
+/* ==================================================
+   MAP MESSAGE
+================================================== */
+
+#mapMessage {
+
+    position: absolute;
+
+    z-index: 1001;
+
+    left: 50%;
+
+    top: 50%;
+
+    transform:
+        translate(-50%, -50%);
+
+    background:
+        rgba(0, 0, 0, 0.9);
+
+    padding: 20px;
+
+    border-radius: 8px;
+
+    text-align: center;
+
+    display: none;
+}
+
+
+/* ==================================================
+   MOBILE
+================================================== */
+
+@media (max-width: 600px) {
+
+    body {
+
+        padding: 10px;
+    }
+
+
+    .board-row {
+
+        grid-template-columns:
+            65px
+            1fr
+            50px
+            85px;
+    }
+
+
+    .train-row {
+
+        font-size: 15px;
+    }
+
+
+    .header-row {
+
+        font-size: 13px;
+    }
+
+
+    .scrolling-text {
+
+        font-size: 12px;
+    }
+
+
+    #mapOverlay {
+
+        padding: 5px;
+    }
+
+
+    #mapPanel {
+
+        height: 95vh;
+    }
+
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<!-- ==================================================
+     TRAIN BOARD
+================================================== -->
+
+<div class="train-board">
+
+
+    <div class="board-row header-row">
+
+        <span class="col-time">
+            Dep
+        </span>
+
+        <span class="col-dest">
+            Destination
+        </span>
+
+        <span class="col-plat">
+            Plat
+        </span>
+
+        <span class="col-status">
+            Expected
+        </span>
+
+    </div>
+
+
+    <div id="departures">
+
+        <div id="message">
+            Loading Sheffield departures...
+        </div>
+
+    </div>
+
+</div>
+
+
+<div id="lastUpdated">
+    Updating...
+</div>
+
+
+<!-- ==================================================
+     MAP
+================================================== -->
+
+<div id="mapOverlay">
+
+    <div id="mapPanel">
+
+        <div id="map"></div>
+
+
+        <div id="trainInfo">
+
+            <div class="title"
+                 id="trainTitle">
+                Train
+            </div>
+
+            <div id="trainDetails">
+                Finding train...
+            </div>
+
+            <div class="small"
+                 id="trainUpdated">
+            </div>
+
+        </div>
+
+
+        <div id="mapMessage">
+            Finding live train position...
+        </div>
+
+
+        <button id="closeMap">
+            ×
+        </button>
+
+    </div>
+
+</div>
+
+
+<!-- ==================================================
+     LEAFLET
+================================================== -->
+
+<script
+src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+</script>
+
+
+<script>
+
+
+/* =====================================================
+   SETTINGS
+===================================================== */
+
+const CLOUDFLARE_URL =
+"https://falling-scene-1424.paul-russell.workers.dev";
+
+
+const STATION =
+"SHF";
+
+
+const NUMBER_OF_DEPARTURES =
+10;
+
+
+/*
+   IMPORTANT:
+
+   There is deliberately NO automatic refresh here.
+
+   We only request the departure board once.
+*/
+
+
+/* =====================================================
+   MAP VARIABLES
+===================================================== */
+
+let map = null;
+
+let trainMarker = null;
+
+let mapUpdateTimer = null;
+
+let selectedTrain = null;
+
+
+/* =====================================================
+   LOAD DEPARTURES
+===================================================== */
+
+async function loadDepartures() {
+
+    const container =
+        document.getElementById(
+            "departures"
+        );
+
+
+    const lastUpdated =
+        document.getElementById(
+            "lastUpdated"
+        );
+
+
+    try {
+
+        const url =
+            CLOUDFLARE_URL +
+            "?type=train&station=" +
+            STATION;
+
+
+        console.log(
+            "Loading departures:",
+            url
+        );
+
+
+        const response =
+            await fetch(url);
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "HTTP " +
+                response.status
+            );
+        }
+
+
+        const data =
+            await response.json();
+
+
+        if (
+            !data.departures ||
+            !Array.isArray(
+                data.departures
+            )
+        ) {
+
+            throw new Error(
+                "No departures returned."
+            );
+        }
+
+
+        container.innerHTML = "";
+
+
+        const departures =
+            data.departures.slice(
+                0,
+                NUMBER_OF_DEPARTURES
+            );
+
+
+        for (
+            const train of departures
+        ) {
+
+            await createTrain(
+                train,
+                container
+            );
+        }
+
+
+        const now =
+            new Date();
+
+
+        lastUpdated.textContent =
+            "Last updated: " +
+            now.toLocaleTimeString(
+                [],
+                {
+                    hour: "2-digit",
+                    minute: "2-digit"
+                }
+            );
+
+
+    } catch (error) {
+
+        console.error(
+            "Railway error:",
+            error
+        );
+
+
+        container.innerHTML =
+            '<div id="message">' +
+            'Unable to load Sheffield departures.' +
+            '<br><br>' +
+            error.message +
+            '</div>';
+
+
+        lastUpdated.textContent =
+            "Update failed";
+    }
+}
+
+
+/* =====================================================
+   CREATE TRAIN
+===================================================== */
+
+async function createTrain(
+    train,
+    container
+) {
+
+
+    /* -----------------------------------------------
+       MAIN TRAIN ROW
+    ------------------------------------------------ */
+
+    const trainRow =
+        document.createElement(
+            "div"
+        );
+
+
+    trainRow.className =
+        "board-row train-row";
+
+
+    /* -----------------------------------------------
+       TIME
+    ------------------------------------------------ */
+
+    const time =
+        document.createElement(
+            "span"
+        );
+
+
+    time.className =
+        "col-time";
+
+
+    time.textContent =
+        train.scheduled ||
+        "--:--";
+
+
+    /* -----------------------------------------------
+       DESTINATION
+    ------------------------------------------------ */
+
+    const destination =
+        document.createElement(
+            "span"
+        );
+
+
+    destination.className =
+        "col-dest";
+
+
+    destination.textContent =
+        train.destination ||
+        "Unknown";
+
+
+    /* -----------------------------------------------
+       PLATFORM
+    ------------------------------------------------ */
+
+    const platform =
+        document.createElement(
+            "span"
+        );
+
+
+    platform.className =
+        "col-plat";
+
+
+    platform.textContent =
+        train.platform ||
+        "-";
+
+
+    /* -----------------------------------------------
+       EXPECTED
+    ------------------------------------------------ */
+
+    const status =
+        document.createElement(
+            "span"
+        );
+
+
+    status.className =
+        "col-status";
+
+
+    if (
+        train.is_cancelled === true
+    ) {
+
+        status.textContent =
+            "CANCELLED";
+
+        status.classList.add(
+            "cancelled"
+        );
+
+    } else if (
+        train.expected &&
+        train.expected !== "On time" &&
+        train.expected !== train.scheduled
+    ) {
+
+        status.textContent =
+            train.expected;
+
+        status.classList.add(
+            "delayed"
+        );
+
+    } else {
+
+        status.textContent =
+            "On time";
+
+        status.classList.add(
+            "on-time"
+        );
+    }
+
+
+    /* -----------------------------------------------
+       ADD COLUMNS
+    ------------------------------------------------ */
+
+    trainRow.appendChild(time);
+
+    trainRow.appendChild(destination);
+
+    trainRow.appendChild(platform);
+
+    trainRow.appendChild(status);
+
+
+    /* -----------------------------------------------
+       CLICK TRAIN
+    ------------------------------------------------ */
+
+    trainRow.addEventListener(
+        "click",
+        () => {
+
+            openTrainMap(
+                train
+            );
+
+        }
+    );
+
+
+    container.appendChild(
+        trainRow
+    );
+
+
+    /* -----------------------------------------------
+       CALLING POINTS
+    ------------------------------------------------ */
+
+    const detailsRow =
+        document.createElement(
+            "div"
+        );
+
+
+    detailsRow.className =
+        "details-row";
+
+
+    const scrollingWindow =
+        document.createElement(
+            "div"
+        );
+
+
+    scrollingWindow.className =
+        "scrolling-window";
+
+
+    const scrollingText =
+        document.createElement(
+            "div"
+        );
+
+
+    scrollingText.className =
+        "scrolling-text";
+
+
+    scrollingText.textContent =
+        "Loading calling points...";
+
+
+    scrollingWindow.appendChild(
+        scrollingText
+    );
+
+
+    detailsRow.appendChild(
+        scrollingWindow
+    );
+
+
+    container.appendChild(
+        detailsRow
+    );
+
+
+    /* -----------------------------------------------
+       CALLING POINT API
+    ------------------------------------------------ */
+
+    if (train.service_id) {
+
+        try {
+
+            const serviceUrl =
+                CLOUDFLARE_URL +
+                "?type=service&service=" +
+                encodeURIComponent(
+                    train.service_id
+                );
+
+
+            const response =
+                await fetch(
+                    serviceUrl
+                );
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    "Service HTTP " +
+                    response.status
+                );
+            }
+
+
+            const service =
+                await response.json();
+
+
+            let points = [];
+
+
+            if (
+                service.calling_points &&
+                Array.isArray(
+                    service.calling_points
+                )
+            ) {
+
+                points =
+                    service.calling_points
+                    .filter(
+                        point =>
+                            point.is_cancelled !== true
+                    )
+                    .map(
+                        point =>
+                            point.station_name
+                    );
+            }
+
+
+            if (
+                service.destination &&
+                !points.includes(
+                    service.destination
+                )
+            ) {
+
+                points.push(
+                    service.destination
+                );
+            }
+
+
+            if (
+                points.length > 0
+            ) {
+
+                scrollingText.textContent =
+                    "Calling at: " +
+                    points.join(
+                        " • "
+                    );
+
+
+                const textLength =
+                    scrollingText.textContent.length;
+
+
+                const duration =
+                    Math.max(
+                        15,
+                        textLength * 0.12
+                    );
+
+
+                scrollingText.style.setProperty(
+                    "--scroll-duration",
+                    duration + "s"
+                );
+
+
+            } else {
+
+                let fallback =
+                    service.operator ||
+                    train.operator ||
+                    "";
+
+
+                if (
+                    train.train_length
+                ) {
+
+                    if (
+                        fallback !== ""
+                    ) {
+
+                        fallback +=
+                            " • ";
+                    }
+
+
+                    fallback +=
+                        train.train_length +
+                        " coaches";
+                }
+
+
+                scrollingText.textContent =
+                    fallback ||
+                    "Calling points unavailable.";
+            }
+
+
+        } catch (error) {
+
+            console.error(
+                "Calling point error:",
+                error
+            );
+
+
+            scrollingText.textContent =
+                "Calling points unavailable.";
+        }
+
+
+    } else {
+
+        scrollingText.textContent =
+            "Calling points unavailable.";
+    }
+}
+
+
+/* =====================================================
+   OPEN TRAIN MAP
+===================================================== */
+
+async function openTrainMap(
+    train
+) {
+
+    selectedTrain =
+        train;
+
+
+    const overlay =
+        document.getElementById(
+            "mapOverlay"
+        );
+
+
+    const message =
+        document.getElementById(
+            "mapMessage"
+        );
+
+
+    overlay.style.display =
+        "block";
+
+
+    message.style.display =
+        "block";
+
+
+    message.textContent =
+        "Finding live train position...";
+
+
+    /* -----------------------------------------------
+       STOP ANY PREVIOUS UPDATE
+    ------------------------------------------------ */
+
+    stopMapUpdates();
+
+
+    /* -----------------------------------------------
+       CREATE MAP
+    ------------------------------------------------ */
+
+    if (!map) {
+
+        map =
+            L.map(
+                "map"
+            );
+
+
+        L.tileLayer(
+            "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+            {
+                maxZoom: 19,
+
+                attribution:
+                    '&copy; OpenStreetMap contributors'
+            }
+        ).addTo(map);
+    }
+
+
+    setTimeout(
+        () => {
+
+            map.invalidateSize();
+
+        },
+        100
+    );
+
+
+    /* -----------------------------------------------
+       DISPLAY BASIC TRAIN INFO
+    ------------------------------------------------ */
+
+    updateTrainInfo(
+        train
+    );
+
+
+    /* -----------------------------------------------
+       FIND POSITION
+    ------------------------------------------------ */
+
+    await updateTrainPosition();
+
+
+    /*
+       Once the first position has been found,
+       update it every 60 seconds while the
+       map remains open.
+    */
+
+    mapUpdateTimer =
+        setInterval(
+            updateTrainPosition,
+            60000
+        );
+}
+
+
+/* =====================================================
+   UPDATE TRAIN POSITION
+===================================================== */
+
+async function updateTrainPosition() {
+
+    if (
+        !selectedTrain
+    ) {
+
+        return;
+    }
+
+
+    const message =
+        document.getElementById(
+            "mapMessage"
+        );
+
+
+    try {
+
+        /*
+           First try the train's train_id,
+           if the departures API supplied one.
+        */
+
+        let url =
+            CLOUDFLARE_URL +
+            "?type=train-position";
+
+
+        if (
+            selectedTrain.train_id
+        ) {
+
+            url +=
+                "&train_id=" +
+                encodeURIComponent(
+                    selectedTrain.train_id
+                );
+
+        } else if (
+            selectedTrain.headcode
+        ) {
+
+            url +=
+                "&headcode=" +
+                encodeURIComponent(
+                    selectedTrain.headcode
+                );
+
+        } else {
+
+            /*
+               We don't have a train identifier.
+
+               Fall back to the complete live
+               position list and try to match
+               the service using destination,
+               operator and timing.
+            */
+
+            await findTrainFromPositions();
+
+            return;
+        }
+
+
+        const response =
+            await fetch(
+                url
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Position HTTP " +
+                response.status
+            );
+        }
+
+
+        const data =
+            await response.json();
+
+
+        if (
+            !data.results ||
+            data.results.length === 0
+        ) {
+
+            /*
+               The train may not have started
+               moving yet.
+            */
+
+            message.style.display =
+                "block";
+
+
+            message.textContent =
+                "No live position available yet.";
+
+
+            return;
+        }
+
+
+        const result =
+            data.results[0];
+
+
+        /*
+           traini.ac returns last_location
+           rather than coordinates from
+           /api/train.
+
+           Therefore use the positions
+           endpoint for the actual marker.
+        */
+
+        await findTrainFromPositions(
+            result
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Train position error:",
+            error
+        );
+
+
+        message.style.display =
+            "block";
+
+
+        message.textContent =
+            "Live position unavailable.";
+    }
+}
+
+
+/* =====================================================
+   FIND TRAIN IN POSITION FEED
+===================================================== */
+
+async function findTrainFromPositions(
+    knownTrain = null
+) {
+
+    const message =
+        document.getElementById(
+            "mapMessage"
+        );
+
+
+    try {
+
+        const response =
+            await fetch(
+                CLOUDFLARE_URL +
+                "?type=positions"
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Positions HTTP " +
+                response.status
+            );
+        }
+
+
+        const positions =
+            await response.json();
+
+
+        if (
+            !Array.isArray(
+                positions
+            )
+        ) {
+
+            throw new Error(
+                "Invalid position data"
+            );
+        }
+
+
+        let match = null;
+
+
+        /* -------------------------------------------
+           BEST MATCH: TRAIN ID
+        ------------------------------------------- */
+
+        if (
+            selectedTrain.train_id
+        ) {
+
+            match =
+                positions.find(
+                    p =>
+                        p.id ===
+                        selectedTrain.train_id
+                );
+        }
+
+
+        /* -------------------------------------------
+           SECOND CHOICE: HEADCODE
+        ------------------------------------------- */
+
+        if (
+            !match &&
+            (
+                selectedTrain.headcode ||
+                selectedTrain.train_headcode
+            )
+        ) {
+
+            const code =
+                selectedTrain.headcode ||
+                selectedTrain.train_headcode;
+
+
+            match =
+                positions.find(
+                    p =>
+                        p.headcode ===
+                        code
+                );
+        }
+
+
+        /*
+           If we have a known train from the
+           /api/train call, try its headcode.
+        */
+
+        if (
+            !match &&
+            knownTrain &&
+            knownTrain.headcode
+        ) {
+
+            match =
+                positions.find(
+                    p =>
+                        p.headcode ===
+                        knownTrain.headcode
+                );
+        }
+
+
+        /* -------------------------------------------
+           LAST RESORT:
+           DESTINATION / OPERATOR
+        ------------------------------------------- */
+
+        if (
+            !match &&
+            selectedTrain.destination
+        ) {
+
+            const destination =
+                selectedTrain.destination
+                .toLowerCase();
+
+
+            const candidates =
+                positions.filter(
+                    p => {
+
+                        if (
+                            !p.station
+                        ) {
+                            return false;
+                        }
+
+
+                        return true;
+                    }
+                );
+
+
+            /*
+               Don't automatically choose a random
+               train merely because it is nearby.
+
+               We only use this as a weak fallback
+               when there is exactly one candidate.
+            */
+
+            if (
+                candidates.length === 1
+            ) {
+
+                match =
+                    candidates[0];
+            }
+        }
+
+
+        if (!match) {
+
+            message.style.display =
+                "block";
+
+
+            message.textContent =
+                "This train has not reported a live map position yet.";
+
+
+            return;
+        }
+
+
+        /*
+           Check coordinates.
+        */
+
+        if (
+            !match.lat ||
+            !match.lon
+        ) {
+
+            message.style.display =
+                "block";
+
+
+            message.textContent =
+                "Train found, but no map coordinates are available yet.";
+
+
+            return;
+        }
+
+
+        /* -------------------------------------------
+           HIDE MESSAGE
+        ------------------------------------------- */
+
+        message.style.display =
+            "none";
+
+
+        /* -------------------------------------------
+           CREATE / MOVE MARKER
+        ------------------------------------------- */
+
+        const lat =
+            Number(
+                match.lat
+            );
+
+
+        const lon =
+            Number(
+                match.lon
+            );
+
+
+        if (!trainMarker) {
+
+            trainMarker =
+                L.marker(
+                    [lat, lon]
+                ).addTo(
+                    map
+                );
+
+        } else {
+
+            trainMarker.setLatLng(
+                [lat, lon]
+            );
+        }
+
+
+        /* -------------------------------------------
+           POPUP
+        ------------------------------------------- */
+
+        const delay =
+            match.delay;
+
+
+        const status =
+            match.status ||
+            "LIVE";
+
+
+        trainMarker.bindPopup(
+            `
+                <strong>
+                    🚆 ${match.headcode || "Train"}
+                </strong>
+                <br>
+                Status: ${status}
+                <br>
+                ${
+                    delay !== undefined
+                    ? "Delay: " + delay + " min"
+                    : ""
+                }
+            `
+        );
+
+
+        /*
+           Centre map on train.
+        */
+
+        map.setView(
+            [lat, lon],
+            11
+        );
+
+
+        /* -------------------------------------------
+           UPDATE INFORMATION PANEL
+        ------------------------------------------- */
+
+        const details =
+            document.getElementById(
+                "trainDetails"
+            );
+
+
+        details.innerHTML =
+            `
+            ${selectedTrain.operator || ""}
+            <br>
+            ${selectedTrain.destination || ""}
+            <br>
+            Live position: ${match.station || "Unknown"}
+            `;
+
+
+        const updated =
+            document.getElementById(
+                "trainUpdated"
+            );
+
+
+        updated.textContent =
+            "Position reported: " +
+            (
+                match.seen ||
+                "recently"
+            );
+
+
+    } catch (error) {
+
+        console.error(
+            "Position feed error:",
+            error
+        );
+
+
+        message.style.display =
+            "block";
+
+
+        message.textContent =
+            "Unable to obtain live train positions.";
+    }
+}
+
+
+/* =====================================================
+   UPDATE TRAIN INFO
+===================================================== */
+
+function updateTrainInfo(
+    train
+) {
+
+    const title =
+        document.getElementById(
+            "trainTitle"
+        );
+
+
+    const details =
+        document.getElementById(
+            "trainDetails"
+        );
+
+
+    title.textContent =
+        (
+            train.scheduled ||
+            "--:--"
+        ) +
+        " → " +
+        (
+            train.destination ||
+            "Unknown"
+        );
+
+
+    details.innerHTML =
+        `
+        ${
+            train.operator ||
+            ""
+        }
+        <br>
+        Platform ${
+            train.platform ||
+            "-"
+        }
+        `;
+
+
+    document.getElementById(
+        "trainUpdated"
+    ).textContent =
+        "Searching for live position...";
+}
+
+
+/* =====================================================
+   STOP MAP UPDATES
+===================================================== */
+
+function stopMapUpdates() {
+
+    if (
+        mapUpdateTimer
+    ) {
+
+        clearInterval(
+            mapUpdateTimer
+        );
+
+        mapUpdateTimer =
+            null;
+    }
+}
+
+
+/* =====================================================
+   CLOSE MAP
+===================================================== */
+
+document.getElementById(
+    "closeMap"
+).addEventListener(
+    "click",
+    closeTrainMap
+);
+
+
+document.getElementById(
+    "mapOverlay"
+).addEventListener(
+    "click",
+    function(event) {
+
+        if (
+            event.target ===
+            this
+        ) {
+
+            closeTrainMap();
+        }
+    }
+);
+
+
+function closeTrainMap() {
+
+    stopMapUpdates();
+
+
+    selectedTrain =
+        null;
+
+
+    if (
+        trainMarker
+    ) {
+
+        map.removeLayer(
+            trainMarker
+        );
+
+        trainMarker =
+            null;
+    }
+
+
+    document.getElementById(
+        "mapOverlay"
+    ).style.display =
+        "none";
+}
+
+
+/* =====================================================
+   INITIAL LOAD
+===================================================== */
+
+loadDepartures();
+
+
+/*
+   IMPORTANT:
+
+   There is intentionally no setInterval()
+   here.
+
+   The departures board loads once.
+
+   The selected train position updates only
+   while its map is open.
+*/
+
+</script>
+
+
+<br>
+
+<a href="index.html"
+   style="color:white;">
+    Back
+</a>
+
+
+</body>
+</html>
