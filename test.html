@@ -980,7 +980,347 @@ Prevent overlapping position requests.
 
 let updatingPosition = false;
 
+/* =========================================================
+   STATION SELECTION
+   ========================================================= */
 
+let stations = [];
+
+const stationInput =
+  document.getElementById("stationInput");
+
+const stationSuggestions =
+  document.getElementById(
+    "stationSuggestions"
+  );
+
+const stationStatus =
+  document.getElementById(
+    "stationStatus"
+  );
+
+const clearStation =
+  document.getElementById(
+    "clearStation"
+  );
+
+
+/* =========================================================
+   LOAD STATIONS
+   ========================================================= */
+
+async function loadStations() {
+
+  try {
+
+    const response =
+      await fetch("stations.json");
+
+    if (!response.ok) {
+
+      throw new Error(
+        `HTTP ${response.status}`
+      );
+    }
+
+
+    stations =
+      await response.json();
+
+
+    if (!Array.isArray(stations)) {
+
+      throw new Error(
+        "stations.json is not an array."
+      );
+    }
+
+
+    stationStatus.textContent =
+      `${stations.length} stations available`;
+
+
+    /*
+    Show the currently selected station.
+    */
+
+    const currentStation =
+      stations.find(
+        station =>
+          station.station_code === STATION
+      );
+
+
+    if (currentStation) {
+
+      stationInput.value =
+        currentStation.station_name;
+
+    }
+
+
+  } catch (error) {
+
+    console.error(
+      "Could not load stations:",
+      error
+    );
+
+
+    stationStatus.textContent =
+      "Could not load stations.";
+  }
+}
+
+
+
+/* =========================================================
+   SEARCH STATIONS
+   ========================================================= */
+
+function searchStations(
+  searchText
+) {
+
+  const query =
+    searchText
+      .trim()
+      .toLowerCase();
+
+
+  if (!query) {
+
+    stationSuggestions.style.display =
+      "none";
+
+    return;
+  }
+
+
+  /*
+  Match anywhere in the station name.
+
+  So:
+
+  "sheff"
+  "field"
+  "effie"
+
+  could all find Sheffield.
+  */
+
+  const matches =
+    stations
+      .filter(station =>
+        station.station_name
+          .toLowerCase()
+          .includes(query)
+      )
+      .slice(0, 20);
+
+
+  stationSuggestions.innerHTML =
+    "";
+
+
+  if (matches.length === 0) {
+
+    stationSuggestions.innerHTML =
+      `<div class="station-suggestion">
+        No stations found
+      </div>`;
+
+    stationSuggestions.style.display =
+      "block";
+
+    return;
+  }
+
+
+  matches.forEach(
+    station => {
+
+      const item =
+        document.createElement("div");
+
+      item.className =
+        "station-suggestion";
+
+
+      item.innerHTML = `
+        ${escapeHtml(station.station_name)}
+        <span class="station-code">
+          ${escapeHtml(station.station_code)}
+        </span>
+      `;
+
+
+      item.addEventListener(
+        "click",
+        () => {
+
+          selectStation(
+            station
+          );
+
+        }
+      );
+
+
+      stationSuggestions.appendChild(
+        item
+      );
+
+    }
+  );
+
+
+  stationSuggestions.style.display =
+    "block";
+}
+
+
+
+/* =========================================================
+   SELECT STATION
+   ========================================================= */
+
+function selectStation(
+  station
+) {
+
+  /*
+  THIS is where STATION changes.
+  */
+
+  STATION =
+    station.station_code;
+
+
+  stationInput.value =
+    station.station_name;
+
+
+  stationSuggestions.style.display =
+    "none";
+
+
+  stationStatus.textContent =
+    `${station.station_name} (${station.station_code})`;
+
+
+  clearStation.style.display =
+    "block";
+
+
+  /*
+  Reload the departure board using
+  the newly selected station.
+  */
+
+  loadDepartures();
+}
+
+
+
+/* =========================================================
+   INPUT EVENT
+   ========================================================= */
+
+stationInput.addEventListener(
+  "input",
+  () => {
+
+    clearStation.style.display =
+      stationInput.value
+        ? "block"
+        : "none";
+
+
+    searchStations(
+      stationInput.value
+    );
+
+  }
+);
+
+
+
+/* =========================================================
+   CLEAR STATION
+   ========================================================= */
+
+clearStation.addEventListener(
+  "click",
+  () => {
+
+    stationInput.value =
+      "";
+
+    STATION =
+      "";
+
+    stationSuggestions.style.display =
+      "none";
+
+    stationStatus.textContent =
+      "Search for a station.";
+
+    clearStation.style.display =
+      "none";
+
+  }
+);
+
+
+
+/* =========================================================
+   CLOSE SUGGESTIONS WHEN CLICKING ELSEWHERE
+   ========================================================= */
+
+document.addEventListener(
+  "click",
+  event => {
+
+    if (
+      !event.target.closest(
+        ".station-selector"
+      )
+    ) {
+
+      stationSuggestions.style.display =
+        "none";
+    }
+
+  }
+);
+
+
+
+/* =========================================================
+   ESCAPE HTML
+   ========================================================= */
+
+function escapeHtml(
+  value
+) {
+
+  const div =
+    document.createElement("div");
+
+  div.textContent =
+    value;
+
+  return div.innerHTML;
+}
+
+
+
+/* =========================================================
+   INITIALISE STATIONS
+   ========================================================= */
+
+loadStations();
 
 /* =========================================================
    LOAD DEPARTURES
@@ -1132,6 +1472,30 @@ async function createTrain(
   platform.textContent =
     train.platform || "--";
 
+/* code to add somewhere
+const params =
+  new URLSearchParams({
+
+    type:
+      "find-train",
+
+    station:
+      STATION,
+
+    time:
+      departure.scheduled || "",
+
+    destination:
+      departure.destination || "",
+
+    origin:
+      departure.origin || "",
+
+    operator:
+      departure.operator || ""
+
+  });
+  up to here */
 
   /* -------------------------------------------------------
      Expected
@@ -2079,7 +2443,9 @@ document.addEventListener(
    INITIAL LOAD
    ========================================================= */
 
-loadDepartures();
+loadStations().then(() => {
+  loadDepartures();
+});
 
 
 /*
