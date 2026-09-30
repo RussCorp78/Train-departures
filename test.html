@@ -571,7 +571,195 @@ body {
 
   font-size: 16px;
 }
+/* =========================================================
+   STATION SELECTOR
+   ========================================================= */
 
+.station-selector {
+
+  width: 100%;
+  max-width: 900px;
+
+  margin: 0 auto 15px;
+
+  position: relative;
+}
+
+
+.station-selector label {
+
+  display: block;
+
+  color: #aaa;
+
+  font-size: 13px;
+  font-weight: bold;
+
+  margin-bottom: 6px;
+}
+
+
+/* ---------------------------------------------------------
+   SEARCH BOX
+   --------------------------------------------------------- */
+
+.station-search {
+
+  position: relative;
+
+  width: 100%;
+}
+
+
+#stationInput {
+
+  width: 100%;
+
+  padding: 12px 45px 12px 14px;
+
+  background: #111;
+
+  border: 2px solid #444;
+
+  border-radius: 4px;
+
+  color: #fff;
+
+  font-size: 17px;
+
+  outline: none;
+}
+
+
+#stationInput:focus {
+
+  border-color: #777;
+}
+
+
+#stationInput::placeholder {
+
+  color: #777;
+}
+
+
+/* ---------------------------------------------------------
+   CLEAR BUTTON
+   --------------------------------------------------------- */
+
+#clearStation {
+
+  position: absolute;
+
+  right: 8px;
+  top: 50%;
+
+  transform: translateY(-50%);
+
+  width: 30px;
+  height: 30px;
+
+  border: 0;
+
+  background: transparent;
+
+  color: #888;
+
+  font-size: 24px;
+
+  line-height: 28px;
+
+  cursor: pointer;
+
+  display: none;
+}
+
+
+#clearStation:hover {
+
+  color: #fff;
+}
+
+
+/* ---------------------------------------------------------
+   SUGGESTIONS
+   --------------------------------------------------------- */
+
+.station-suggestions {
+
+  position: absolute;
+
+  left: 0;
+  right: 0;
+
+  top: 100%;
+
+  z-index: 500;
+
+  background: #111;
+
+  border: 2px solid #444;
+
+  border-top: 0;
+
+  max-height: 300px;
+
+  overflow-y: auto;
+
+  display: none;
+}
+
+
+.station-suggestion {
+
+  padding: 12px 14px;
+
+  border-bottom: 1px solid #333;
+
+  cursor: pointer;
+
+  color: #fff;
+
+  font-size: 16px;
+}
+
+
+.station-suggestion:last-child {
+
+  border-bottom: 0;
+}
+
+
+.station-suggestion:hover,
+.station-suggestion.active {
+
+  background: #222;
+}
+
+
+.station-code {
+
+  color: #888;
+
+  font-size: 13px;
+
+  margin-left: 8px;
+}
+
+
+/* ---------------------------------------------------------
+   STATUS
+   --------------------------------------------------------- */
+
+.station-status {
+
+  margin-top: 5px;
+
+  color: #777;
+
+  font-size: 12px;
+}
+  
 </style>
 
 </head>
@@ -579,7 +767,50 @@ body {
 
 <body>
 
+<!-- =======================================================
+     STATION SELECTOR
+     ======================================================= -->
 
+<div class="station-selector">
+
+  <label for="stationInput">
+    Station
+  </label>
+
+  <div class="station-search">
+
+    <input
+      type="text"
+      id="stationInput"
+      placeholder="Search for a station..."
+      autocomplete="off"
+      spellcheck="false"
+    >
+
+    <button
+      id="clearStation"
+      type="button"
+      aria-label="Clear station"
+    >
+      ×
+    </button>
+
+  </div>
+
+  <div
+    id="stationSuggestions"
+    class="station-suggestions"
+  ></div>
+
+  <div
+    id="stationStatus"
+    class="station-status"
+  >
+    Loading stations...
+  </div>
+
+</div>
+  
 <!-- =======================================================
      DEPARTURE BOARD
      ======================================================= -->
