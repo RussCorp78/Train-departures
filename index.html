@@ -70,30 +70,18 @@
 
   <script type="text/javascript">
     // --- CONFIGURATION ---
-    var workerUrl = "https://falling-scene-1424.paul-russell.workers.dev"; // Your Cloudflare Worker URL
-    var stationCode = "SFH"; // Change to your target station CRS code (e.g., PAD, MAN)
+    var workerUrl = "https://workers.dev"; // Your Cloudflare Worker URL
+    var stationCode = "SFO"; // Change to your target station CRS code (e.g., PAD, MAN)
     
     var container = document.getElementById("buttonContainer");
     var display = document.getElementById("displayBoard");
 
-    // 1. Explicitly list your specific station platforms layout
-    var platforms = [
-        "1a", "1b", 
-        "2a", "2b", "2c", 
-        "3a", "3b", 
-        "4a", "4b", 
-        "5a", "5b", 
-        "6a", "6b", 
-        "7a", "7b", 
-        "8a", "8b"
-    ];
-
-    // Clear any previous static buttons and dynamically generate the new platform variations
+    // 1. Generate clean buttons for main Platforms 1 to 8
     container.innerHTML = "";
-    for (var i = 0; i < platforms.length; i++) {
+    for (var i = 1; i <= 8; i++) {
         var btn = document.createElement("button");
         btn.className = "platform-btn";
-        btn.innerText = platforms[i];
+        btn.innerText = i;
         
         btn.onclick = function() {
             var platformNum = this.innerText;
@@ -104,7 +92,7 @@
     }
 
     function updateDisplay(platformNumber) {
-        display.innerText = "Platform " + platformNumber + " - Loading...";
+        display.innerText = "Platform " + platformNumber + " (inc. sub-platforms) - Loading...";
         fetchPlatformData(platformNumber);
     }
 
@@ -117,7 +105,7 @@
         }
 
         if (!xhr) {
-            display.innerText = "Error: AJAX not supported in this environment.";
+            display.innerText = "Error: AJAX not supported.";
             return;
         }
 
@@ -126,10 +114,11 @@
         
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4) {
+                // Safeguard against upstream 502/500 errors crashing your interface
                 if (xhr.status === 200) {
                     processTrainData(xhr.responseText, platformNumber);
                 } else {
-                    display.innerText = "Error loading data (Status: " + xhr.status + ")";
+                    display.innerText = "Upstream Service Error (HTTP " + xhr.status + "). Please try again.";
                 }
             }
         };
@@ -140,49 +129,60 @@
     function processTrainData(jsonText, platformNumber) {
         try {
             var responseData = (typeof JSON !== 'undefined') ? JSON.parse(jsonText) : eval('(' + jsonText + ')');
-            
-            // Handle variations in root data property wrappers
             var trains = responseData.departures || responseData.services || responseData; 
-            var outputHtml = "<b>Platform " + platformNumber + " Departures:</b><br>";
-            var foundAny = false;
+            
+            var outputHtml = "<b>Platform " + platformNumber + " Next Trains:</b><br>";
+            var matchedTrains = [];
 
             if (trains && trains.length > 0) {
                 for (var i = 0; i < trains.length; i++) {
                     var train = trains[i];
-                    
-                    // Match platform case-insensitively (e.g., '1a' matches '1A')
                     var apiPlatform = train.platform ? String(train.platform).toLowerCase() : "";
-                    var targetPlatform = String(platformNumber).toLowerCase();
+                    var targetPrefix = String(platformNumber).toLowerCase();
 
-                    if (apiPlatform === targetPlatform) {
-                        foundAny = true;
-                        
-                        // Fix for 00:00 time field: Exhaustively check all UK departure API key schemas
-                        var time = train.std || 
-                                   train.aimed_departure_time || 
-                                   train.origin_departure_time || 
-                                   train.expected_departure_time || 
-                                   "00:00";
-                                   
-                        var dest = train.destination_name || train.destination || "Unknown Destination";
-                        var status = train.etd || train.status || "On Time";
-                        
-                        outputHtml += time + " to " + dest + " (" + status + ")<br>";
+                    // Match if platform matches exactly OR starts with the main number (e.g., "2" matches "2", "2a", "2b", "2c")
+                    if (apiPlatform === targetPrefix || apiPlatform.indexOf(targetPrefix) === 0) {
+                        matchedTrains.push(train);
                     }
                 }
             }
 
-            if (!foundAny) {
-                outputHtml += "No upcoming departures scheduled.";
+            // Render a maximum of 3 trains
+            var limit = matchedTrains.length > 3 ? 3 : matchedTrains.length;
+
+            if (limit > 0) {
+                for (var j = 0; j < limit; j++) {
+                    var t = matchedTrains[j];
+                    
+                    // Parse standard UK Buses & Trains API response payload format safely
+                    var rawTime = t.scheduled || t.expected || t.std || "";
+                    var formattedTime = "00:00";
+                    
+                    // If time is returned as ISO '2026-09-30T14:30:00', slice out the HH:MM
+                    if (rawTime.length >= 16 && rawTime.indexOf("T") !== -1) {
+                        formattedTime = rawTime.substring(rawTime.indexOf("T") + 1, rawTime.indexOf("T") + 6);
+                    } else if (rawTime.length > 0) {
+                        formattedTime = rawTime;
+                    }
+                                   
+                    var dest = t.destination || t.destination_name || "Unknown Destination";
+                    var platLabel = t.platform ? " [Plat " + t.platform + "]" : "";
+                    var status = (t.is_cancelled === true) ? "Cancelled" : (t.status || "On Time");
+                    
+                    outputHtml += formattedTime + " to " + dest + platLabel + " - " + status + "<br>";
+                }
+            } else {
+                outputHtml += "No upcoming departures found for this platform.";
             }
 
             display.innerHTML = outputHtml;
 
         } catch (e) {
-            display.innerText = "Error processing train timetables.";
+            display.innerText = "Error reading timetable data layout.";
         }
     }
 </script>
+
 
 
   <a href="departures.html"> Sheffield Departures </a>
