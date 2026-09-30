@@ -175,7 +175,34 @@ if (trains && trains.length > 0) {
                     var platLabel = t.platform ? " [Plat " + t.platform + "]" : "";
                     var status = (t.is_cancelled === true) ? "Cancelled" : (t.status || "On Time");
                     
-                    outputHtml += formattedTime + " to " + dest + platLabel + " - " + status + "<br>";
+                   var outputHtml =
+    '<div class="train-board">' +
+    '<div class="board-row header-row">' +
+    '<span class="col-time">DEP</span>' +
+    '<span class="col-dest">DESTINATION</span>' +
+    '<span class="col-plat">PLAT</span>' +
+    '<span class="col-status">EXPECTED</span>' +
+    '</div>';
+
+for (var j = 0; j < limit; j++) {
+
+    var t = matchedTrains[j];
+
+    var depTime = t.scheduled || "";
+    var dest = t.destination || "Unknown";
+    var plat = t.platform || "";
+    var status = t.expected || "On Time";
+
+    outputHtml +=
+        '<div class="board-row train-row">' +
+            '<span class="col-time">' + depTime + '</span>' +
+            '<span class="col-dest">' + dest + '</span>' +
+            '<span class="col-plat">' + plat + '</span>' +
+            '<span class="col-status">' + status + '</span>' +
+        '</div>';
+}
+
+outputHtml += '</div>';
                 }
             } else {
                 outputHtml += "No upcoming departures found for this platform.";
