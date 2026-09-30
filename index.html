@@ -173,11 +173,7 @@ if (trains && trains.length > 0) {
                         formattedTime = rawTime;
                     }
                                    
-                    var dest = t.destination || t.destination_name || "Unknown Destination";
-                    var platLabel = t.platform ? " [Plat " + t.platform + "]" : "";
-                    var status = (t.is_cancelled === true) ? "Cancelled" : (t.status || "On Time");
-                    
-                   var outputHtml =
+                    var outputHtml =
     '<div class="train-board">' +
     '<div class="board-row header-row">' +
     '<span class="col-time">DEP</span>' +
@@ -193,16 +189,19 @@ for (var j = 0; j < limit; j++) {
     var depTime = t.scheduled || "";
     var dest = t.destination || "Unknown";
     var plat = t.platform || "";
-    var status = t.expected || "On Time";
 
-   outputHtml =
-    '<div class="board-row header-row">' +
-    '<span class="col-time">DEP</span>' +
-    '<span class="col-dest">DESTINATION</span>' +
-    '<span class="col-plat">PLAT</span>' +
-    '<span class="col-status">EXPECTED</span>' +
-    '</div>';
+    var status =
+        t.is_cancelled
+            ? "Cancelled"
+            : (t.expected || "On Time");
 
+    outputHtml +=
+        '<div class="board-row train-row">' +
+            '<span class="col-time">' + depTime + '</span>' +
+            '<span class="col-dest">' + dest.toUpperCase() + '</span>' +
+            '<span class="col-plat">' + plat + '</span>' +
+            '<span class="col-status">' + status + '</span>' +
+        '</div>';
 }
 
 outputHtml += '</div>';
