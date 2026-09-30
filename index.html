@@ -3,6 +3,7 @@
 <head>
   <link rel="icon" type="image/png" href="../logo.png">
   <link rel="stylesheet" href="style.css">
+  
 <style>
         /* Container for the buttons */
         .button-row {
@@ -69,17 +70,30 @@
 
   <script type="text/javascript">
     // --- CONFIGURATION ---
-    var workerUrl = "https://falling-scene-1424.paul-russell.workers.dev"; 
-    var stationCode = "SHF"; // Target station CRS code
+    var workerUrl = "https://falling-scene-1424.paul-russell.workers.dev"; // Your Cloudflare Worker URL
+    var stationCode = "SFH"; // Change to your target station CRS code (e.g., PAD, MAN)
     
     var container = document.getElementById("buttonContainer");
     var display = document.getElementById("displayBoard");
 
-    // Generate 11 platform buttons
-    for (var i = 1; i <= 11; i++) {
+    // 1. Explicitly list your specific station platforms layout
+    var platforms = [
+        "1a", "1b", 
+        "2a", "2b", "2c", 
+        "3a", "3b", 
+        "4a", "4b", 
+        "5a", "5b", 
+        "6a", "6b", 
+        "7a", "7b", 
+        "8a", "8b"
+    ];
+
+    // Clear any previous static buttons and dynamically generate the new platform variations
+    container.innerHTML = "";
+    for (var i = 0; i < platforms.length; i++) {
         var btn = document.createElement("button");
         btn.className = "platform-btn";
-        btn.innerText = i;
+        btn.innerText = platforms[i];
         
         btn.onclick = function() {
             var platformNum = this.innerText;
@@ -94,7 +108,6 @@
         fetchPlatformData(platformNumber);
     }
 
-    // Legacy JScript network request (compatible with older IE / WSH / ASP engines)
     function fetchPlatformData(platformNumber) {
         var xhr;
         if (typeof XMLHttpRequest !== 'undefined') {
@@ -108,9 +121,7 @@
             return;
         }
 
-        // Build the query URL using JScript string concatenation
         var target = workerUrl + "?type=train&station=" + encodeURIComponent(stationCode);
-
         xhr.open("GET", target, true);
         
         xhr.onreadystatechange = function() {
@@ -126,13 +137,11 @@
         xhr.send(null);
     }
 
-    // Parse the JSON array and filter by the selected platform number
     function processTrainData(jsonText, platformNumber) {
         try {
-            // Using modern JSON parsing if available, or eval fallback for legacy JScript
             var responseData = (typeof JSON !== 'undefined') ? JSON.parse(jsonText) : eval('(' + jsonText + ')');
             
-            // Note: Adjust 'departures' or 'services' depending on the exact schema structure of api.busesandtrains.co.uk
+            // Handle variations in root data property wrappers
             var trains = responseData.departures || responseData.services || responseData; 
             var outputHtml = "<b>Platform " + platformNumber + " Departures:</b><br>";
             var foundAny = false;
@@ -141,10 +150,20 @@
                 for (var i = 0; i < trains.length; i++) {
                     var train = trains[i];
                     
-                    // Filter: Compare train platform against chosen button string
-                    if (String(train.platform) === String(platformNumber)) {
+                    // Match platform case-insensitively (e.g., '1a' matches '1A')
+                    var apiPlatform = train.platform ? String(train.platform).toLowerCase() : "";
+                    var targetPlatform = String(platformNumber).toLowerCase();
+
+                    if (apiPlatform === targetPlatform) {
                         foundAny = true;
-                        var time = train.std || train.aimed_departure_time || "00:00";
+                        
+                        // Fix for 00:00 time field: Exhaustively check all UK departure API key schemas
+                        var time = train.std || 
+                                   train.aimed_departure_time || 
+                                   train.origin_departure_time || 
+                                   train.expected_departure_time || 
+                                   "00:00";
+                                   
                         var dest = train.destination_name || train.destination || "Unknown Destination";
                         var status = train.etd || train.status || "On Time";
                         
@@ -164,6 +183,7 @@
         }
     }
 </script>
+
 
   <a href="departures.html"> Sheffield Departures </a>
 <br>
