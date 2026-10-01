@@ -1757,11 +1757,14 @@ async function openTrainMap(
     departure against traini.ac.
     */
 
-    const params =
+   const params =
   new URLSearchParams({
 
     type:
       "find-train",
+
+    board:
+      BOARD_MODE,
 
     station:
       STATION,
