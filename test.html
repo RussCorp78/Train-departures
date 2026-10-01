@@ -1346,14 +1346,20 @@ async function loadDepartures() {
 
     console.log(data);
 
+    const services =
+      BOARD_MODE === "departures"
+      ? data.departures
+      : data.arrivals;
+
     if (
-      !data.departures ||
-      !Array.isArray(data.departures)
-    ) {
+      !services ||
+      !Array.isArray(services)
+    )
+{
 
       container.innerHTML =
         `<div style="padding:20px;">
-          No departures found.
+          No services found.
         </div>`;
 
       return;
@@ -1363,12 +1369,11 @@ async function loadDepartures() {
     container.innerHTML = "";
 
 
-    const departures =
-      data.departures.slice(
+     const departures =
+      services.slice(
         0,
         NUMBER_OF_DEPARTURES
       );
-
 
     for (const train of departures) {
 
