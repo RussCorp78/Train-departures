@@ -810,6 +810,13 @@ body {
   </div>
 
 </div>
+
+<div class="mode-selector">
+  <button id="modeBtn">
+    Show Arrivals
+  </button>
+</div>
+  
   
 <!-- =======================================================
      DEPARTURE BOARD
@@ -935,51 +942,37 @@ body {
    CONFIGURATION
    ========================================================= */
 
-const CLOUDFLARE_URL =
-  "https://falling-scene-1424.paul-russell.workers.dev";
+/* Cloudflare Worker link */
+  
+  const CLOUDFLARE_URL = "https://falling-scene-1424.paul-russell.workers.dev";
 
-  let STATION = "SHF"
+/* Initial station selection */  
 
-/*
-How often to update the train position while the map
-is open.
+  let STATION = "SHF";
 
-60 seconds = 1 request per minute.
-*/
+/* How often to update the train position while the map is open.  60 seconds = 1 request per minute */
 
-const POSITION_REFRESH_INTERVAL =
-  60 * 1000;
+  const POSITION_REFRESH_INTERVAL = 60 * 1000;
 
+/* How many departures to display */
 
-/*
-How many departures to display.
-*/
+  const NUMBER_OF_DEPARTURES = 10;
 
-const NUMBER_OF_DEPARTURES =
-  10;
+/* Timer used only while the map is open */
 
+  let positionTimer = null;
 
-/*
-Timer used only while the map is open.
-*/
+/* Currently selected train.  This contains the traini.ac train_id/headcode */
 
-let positionTimer = null;
+  let selectedTrain = null;
 
+/* Prevent overlapping position requests */
 
-/*
-Currently selected train.
+  let updatingPosition = false;
 
-This contains the traini.ac train_id/headcode.
-*/
+/* Arrival or departure variable */
 
-let selectedTrain = null;
-
-
-/*
-Prevent overlapping position requests.
-*/
-
-let updatingPosition = false;
+  let BOARD_MODE = "departures";
 
 /* =========================================================
    STATION SELECTION
@@ -1187,7 +1180,11 @@ function selectStation(station) {
   STATION = station.station_code;
   stationInput.value = station.station_name;
   document.getElementById("stationTitle").textContent =
-    `${station.station_name} Departures (${station.station_code})`;
+  `${station.station_name} ${
+    BOARD_MODE === "departures"
+      ? "Departures"
+      : "Arrivals"
+  } (${station.station_code})`;
   stationSuggestions.style.display = "none";
   stationStatus.textContent = `${station.station_name} (${station.station_code})`;
   clearStation.style.display = "block";
@@ -1245,7 +1242,26 @@ clearStation.addEventListener(
   }
 );
 
+  /* Arrival departure switch event */
+  
+document
+  .getElementById("modeBtn")
+  .addEventListener("click", () => {
 
+    BOARD_MODE =
+      BOARD_MODE === "departures"
+        ? "arrivals"
+        : "departures";
+
+    document.getElementById("modeBtn").textContent =
+      BOARD_MODE === "departures"
+        ? "Show Arrivals"
+        : "Show Departures";
+
+    loadDepartures();
+
+  });
+``
 
 /* =========================================================
    CLOSE SUGGESTIONS WHEN CLICKING ELSEWHERE
@@ -1301,7 +1317,8 @@ async function loadDepartures() {
 
     const response =
       await fetch(
-        `${CLOUDFLARE_URL}?type=train&station=${encodeURIComponent(STATION)}`
+        `${CLOUDFLARE_URL}?
+        type=train&station=${encodeURIComponent(STATION)}&board=${BOARD_MODE}`
       );
 
 
@@ -1400,64 +1417,44 @@ async function createTrain(
      Departure time
      ------------------------------------------------------- */
 
-  const time =
-    document.createElement("div");
+  const time = document.createElement("div");
 
-  time.className =
-    "time";
+  time.className = "time";
 
-  time.textContent =
-    train.scheduled || "--:--";
+  time.textContent = train.scheduled || "--:--";
 
 
   /* -------------------------------------------------------
      Destination
      ------------------------------------------------------- */
 
-  const destination =
-    document.createElement("div");
+  const destination = document.createElement("div");
 
-  destination.className =
-    "destination";
+  destination.className = "destination";
 
-  destination.textContent =
-    train.destination || "Unknown";
-
+  destination.textContent = train.destination || "Unknown";
 
   /* -------------------------------------------------------
      Platform
      ------------------------------------------------------- */
 
-  const platform =
-    document.createElement("div");
+    const platform = document.createElement("div");
 
-  platform.className =
-    "platform";
+    platform.className = "platform";
 
-  platform.textContent =
-    train.platform || "--";
-
+    platform.textContent = train.platform || "--";
 
   /* -------------------------------------------------------
      Expected
      ------------------------------------------------------- */
 
-  const expected =
-    document.createElement("div");
+    const expected = document.createElement("div");
+    expected.className = "expected";
 
-  expected.className =
-    "expected";
+    const expectedText = train.expected || "On time";
+    expected.textContent = expectedText;
 
-  const expectedText =
-    train.expected || "On time";
-
-  expected.textContent =
-    expectedText;
-
-
-  /*
-  Colour delayed/cancelled services.
-  */
+  /* Colour delayed/cancelled services */
 
   if (
     train.is_cancelled ||
