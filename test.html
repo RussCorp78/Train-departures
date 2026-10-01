@@ -2,7 +2,8 @@
 <html lang="en">
 
 <head>
-
+<link rel="icon" type="image/png" href="../logo.png">
+  <link rel="stylesheet" href="style.css">
 <meta charset="UTF-8">
 
 <meta
@@ -1257,11 +1258,36 @@ document
       BOARD_MODE === "departures"
         ? "Show Arrivals"
         : "Show Departures";
-
-    loadDepartures();
-
-  });
-``
+    
+    document.getElementById("timeHeading").textContent =
+      BOARD_MODE === "departures"
+        ? "Dep"
+        : "Arr";
+ 
+    document.getElementById("placeHeading").textContent =
+      BOARD_MODE === "departures"
+        ? "Destination"
+        : "From";
+ 
+  const currentStation = 
+    stations.find(
+    station =>
+    station.station_code === STATION
+  );
+ 
+  if (currentStation) {
+ 
+    document.getElementById("stationTitle").textContent =
+      `${currentStation.station_name} ${
+      BOARD_MODE === "departures"
+        ? "Departures"
+        : "Arrivals"
+      } (${currentStation.station_code})`;
+  }
+ 
+loadDepartures();
+ 
+});
 
 /* =========================================================
    CLOSE SUGGESTIONS WHEN CLICKING ELSEWHERE
@@ -1431,7 +1457,10 @@ async function createTrain(
 
   destination.className = "destination";
 
-  destination.textContent = train.destination || "Unknown";
+  destination.textContent =
+  BOARD_MODE === "departures"
+    ? train.destination || "Unknown"
+    : train.origin || "Unknown";
 
   /* -------------------------------------------------------
      Platform
