@@ -2,18 +2,14 @@
 <html lang="en">
 
 <head>
-<link rel="icon" type="image/png" href="../logo.png">
+  <link rel="icon" type="image/png" href="../logo.png">
   <link rel="stylesheet" href="style.css">
-<meta charset="UTF-8">
 
-<meta
-  name="viewport"
-  content="width=device-width, initial-scale=1.0"
->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title> Departures Board </title>
-
-
+  
 <style>
 
 /* =========================================================
@@ -1249,23 +1245,19 @@ document
   .getElementById("modeBtn")
   .addEventListener("click", () => {
 
-    BOARD_MODE =
-      BOARD_MODE === "departures"
+    BOARD_MODE = BOARD_MODE === "departures"
         ? "arrivals"
         : "departures";
 
-    document.getElementById("modeBtn").textContent =
-      BOARD_MODE === "departures"
+    document.getElementById("modeBtn").textContent = BOARD_MODE === "departures"
         ? "Show Arrivals"
         : "Show Departures";
     
-    document.getElementById("timeHeading").textContent =
-      BOARD_MODE === "departures"
+    document.getElementById("timeHeading").textContent = BOARD_MODE === "departures"
         ? "Dep"
         : "Arr";
  
-    document.getElementById("placeHeading").textContent =
-      BOARD_MODE === "departures"
+    document.getElementById("placeHeading").textContent = BOARD_MODE === "departures"
         ? "Destination"
         : "From";
  
