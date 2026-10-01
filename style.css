@@ -8,69 +8,89 @@ body {
 }
 
 /* The Main Display Board Casing */
-.train-board {
-  background-color: #050505;
-  border: 4px solid #222;
-  border-radius: 4px;
-  padding: 15px 20px;
-  max-width: 800px;
-  margin: 0 auto;
-  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.9), 0 10px 30px rgba(0,0,0,0.5);
+  .train-board {
+    background-color: #050505;
+    border: 4px solid #222;
+    border-radius: 4px;
+    padding: 15px 20px;
+    max-width: 800px;
+    margin: 0 auto;
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.9), 0 10px 30px rgba(0,0,0,0.5);
   
-  /* Apply the pixel font globally to the board */
-  font-family: 'VT323', monospace;
-  font-size: 28px;
-  letter-spacing: 2px;
+/* Apply the pixel font globally to the board */
+    font-family: 'VT323', monospace;
+    font-size: 28px;
+    letter-spacing: 2px;
   
   /* The signature UK National Rail high-glow orange */
-  color: #ff9900; 
-  text-shadow: 
-    0 0 2px rgba(255, 153, 0, 0.6), 
-    0 0 8px rgba(255, 102, 0, 0.8),
-    0 0 15px rgba(255, 102, 0, 0.4);
-}
+    color: #ff9900; 
+    text-shadow: 
+      0 0 2px rgba(255, 153, 0, 0.6), 
+      0 0 8px rgba(255, 102, 0, 0.8),
+      0 0 15px rgba(255, 102, 0, 0.4);
+    }
 
 /* Layout Management */
-.board-row {
-  display: flex;
-  margin-bottom: 4px;
-  overflow: hidden;
-  white-space: nowrap;
+  .board-row {
+    display: flex;
+    margin-bottom: 4px;
+    overflow: hidden;
+    white-space: nowrap;
 }
 
 /* Header rows use smaller, slightly dimmed text on real boards */
-.header-row {
-  font-size: 20px;
-  color: #cc7700;
-  border-bottom: 1px solid #222;
-  padding-bottom: 5px;
-  margin-bottom: 10px;
-  text-transform: uppercase;
-}
+  .header-row {
+    font-size: 20px;
+    color: #cc7700;
+    border-bottom: 1px solid #222;
+    padding-bottom: 5px;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
 
 /* Precise Column Width Alignment */
-.col-time { width: 15%; }
-.col-dest { width: 55%; text-transform: uppercase; }
-.col-plat { width: 10%; text-align: center; }
-.col-status { width: 20%; text-align: right; }
+  .col-time { width: 15%; }
+  .col-dest { width: 55%; text-transform: uppercase; }
+  .col-plat { width: 10%; text-align: center; }
+  .col-status { width: 20%; text-align: right; }
 
 /* Sub-details (scrolling line) styling */
-.details-row {
-  font-size: 24px;
-  color: #ffaa00;
-  margin-top: 5px;
-  padding-top: 5px;
-  border-top: 1px dashed #222;
-}
+  .details-row {
+    font-size: 24px;
+    color: #ffaa00;
+    margin-top: 5px;
+    padding-top: 5px;
+    border-top: 1px dashed #222;
+  }
 
 /* Smooth CSS Marquee Animation for calling points */
-.scrolling-text {
-  display: inline-block;
-  animation: marquee 15s linear infinite;
-  padding-left: 100%;
-}
+  .scrolling-text {
+    display: inline-block;
+    animation: marquee 15s linear infinite;
+    padding-left: 100%;
+  }
 
 @keyframes marquee {
   0% { transform: translate3d(0, 0, 0); }
   100% { transform: translate3d(-100%, 0, 0); }
 }
+
+/* css for the arrival or departure button */
+  .mode-selector{
+    max-width:900px;
+    margin:0 auto 15px;
+  }
+
+  #modeBtn{
+    width:100%;
+    padding:12px;
+    background:#111;
+    color:white;
+    border:2px solid #444;
+    cursor:pointer;
+    font-size:16px;
+  }
+
+  #modeBtn:hover{
+    background:#222;
+  }
