@@ -1317,8 +1317,7 @@ async function loadDepartures() {
 
     const response =
       await fetch(
-        `${CLOUDFLARE_URL}?
-        type=train&station=${encodeURIComponent(STATION)}&board=${BOARD_MODE}`
+        `${CLOUDFLARE_URL}?type=train&station=${encodeURIComponent(STATION)}&board=${BOARD_MODE}`
       );
 
 
