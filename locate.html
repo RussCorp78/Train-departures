@@ -1,430 +1,221 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Locate Me</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Location & Navigation Map</title>
   
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Leaflet Routing Machine CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
   
-  <!-- Leaflet CSS & JS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  
-  <!-- FontAwesome Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              500: '#3b82f6',
-              600: '#2563eb',
-              700: '#1d4ed8',
-            }
-          }
-        }
-      }
-    }
-  </script>
-
   <style>
-    /* Full height map container styling */
-    #map {
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       height: 100vh;
-      width: 100vw;
-      z-index: 1;
-    }
-
-    /* Custom CSS pulse animation for the live position marker */
-    .gps-pulse-marker {
       display: flex;
+      flex-direction: column;
+      background-color: #0f172a;
+      color: #f8fafc;
+    }
+    header {
+      padding: 1rem;
+      background-color: #1e293b;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+      display: flex;
+      justify-content: space-between;
       align-items: center;
-      justify-content: center;
     }
-    
-    .gps-pulse-core {
-      width: 16px;
-      height: 16px;
-      background-color: #3b82f6;
-      border: 3px solid #ffffff;
-      border-radius: 50%;
-      box-shadow: 0 0 10px rgba(0,0,0,0.5);
-      z-index: 2;
+    h1 {
+      font-size: 1.1rem;
+      font-weight: 600;
     }
-
-    .gps-pulse-ring {
+    #controls {
+      display: flex;
+      gap: 0.5rem;
+    }
+    button {
+      padding: 0.5rem 0.8rem;
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 0.375rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    button:hover {
+      background-color: #1d4ed8;
+    }
+    button.clear-btn {
+      background-color: #dc2626;
+    }
+    button.clear-btn:hover {
+      background-color: #b91c1c;
+    }
+    #map {
+      flex: 1;
+      width: 100%;
+    }
+    #status {
       position: absolute;
-      width: 38px;
-      height: 38px;
-      border: 3px solid #3b82f6;
-      border-radius: 50%;
-      animation: pulse-ring 1.8s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
-      z-index: 1;
+      bottom: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: rgba(30, 41, 59, 0.95);
+      padding: 0.6rem 1.2rem;
+      border-radius: 2rem;
+      font-size: 0.85rem;
+      z-index: 1000;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(4px);
+      text-align: center;
+      max-width: 90%;
     }
-
-    @keyframes pulse-ring {
-      0% {
-        transform: scale(0.33);
-        opacity: 0.8;
-      }
-      80%, 100% {
-        transform: scale(1.4);
-        opacity: 0;
-      }
-    }
-
-    /* Override standard leaflet popup dark theme styling */
-    .leaflet-popup-content-wrapper {
-      background: #0f172a !important;
+    /* Style tweak for Leaflet Routing panel */
+    .leaflet-routing-container {
+      background-color: rgba(15, 23, 42, 0.9) !important;
       color: #f8fafc !important;
-      border: 1px solid #334155 !important;
-      border-radius: 0.75rem !important;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
-    }
-    .leaflet-popup-tip {
-      background: #0f172a !important;
+      border-radius: 0.5rem;
+      padding: 0.5rem;
     }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100 overflow-hidden font-sans select-none antialiased">
+<body>
 
-  <!-- Top Navigation & Search Bar Overlay -->
-  <div class="fixed top-3 left-3 right-3 sm:left-6 sm:right-auto sm:w-96 z-20 flex flex-col gap-2">
-    <!-- Search / Title Bar Card -->
-    <div class="bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-2xl p-2.5 shadow-2xl flex items-center gap-2">
-      <div class="p-2 bg-brand-500/20 text-brand-500 rounded-xl flex items-center justify-center">
-        <i class="fa-solid fa-location-crosshairs text-lg"></i>
-      </div>
-      <form id="searchForm" class="flex-1 flex items-center gap-2" onsubmit="event.preventDefault(); searchLocation();">
-        <input id="searchInput" type="text" placeholder="Search address or location..." 
-               class="w-full bg-slate-950/60 border border-slate-800 focus:border-brand-500 text-xs sm:text-sm text-slate-100 rounded-xl px-3 py-2 outline-none transition-all placeholder:text-slate-500">
-        <button type="submit" title="Search" class="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2 rounded-xl text-xs transition-all">
-          <i class="fa-solid fa-magnifying-glass"></i>
-        </button>
-      </form>
+  <header>
+    <h1>GPS Navigator</h1>
+    <div id="controls">
+      <button onclick="centerOnUser()">My Location</button>
+      <button class="clear-btn" onclick="clearRoute()">Clear Route</button>
     </div>
+  </header>
 
-    <!-- Alert / Notification Toast -->
-    <div id="statusAlert" class="hidden bg-amber-500/10 border border-amber-500/30 backdrop-blur-md text-amber-300 rounded-xl p-3 text-xs flex items-center gap-2.5 shadow-lg">
-      <i id="statusIcon" class="fa-solid fa-triangle-exclamation text-amber-400"></i>
-      <span id="statusMessage">Ready to locate</span>
-    </div>
-  </div>
-
-  <!-- Map Container -->
   <div id="map"></div>
+  <div id="status">Click on the map to set a navigation destination...</div>
 
-  <!-- Floating Action Buttons & Info Panels -->
-  <div class="fixed bottom-4 left-3 right-3 sm:left-auto sm:right-6 sm:w-80 z-20 flex flex-col gap-3">
-    
-    <!-- Coordinates Details Card -->
-    <div id="infoCard" class="hidden bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-2xl p-4 shadow-2xl transition-all">
-      <div class="flex items-center justify-between pb-2 border-b border-slate-800 mb-3">
-        <div class="flex items-center gap-2">
-          <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Position Lock</span>
-        </div>
-        <span id="timestampText" class="text-[10px] text-slate-500 font-mono">--:--:--</span>
-      </div>
-
-      <div class="grid grid-cols-2 gap-2 text-xs">
-        <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80">
-          <p class="text-[10px] text-slate-500 font-medium uppercase">Latitude</p>
-          <p id="latText" class="font-mono text-sm font-bold text-slate-200 mt-0.5">0.000000</p>
-        </div>
-        <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80">
-          <p class="text-[10px] text-slate-500 font-medium uppercase">Longitude</p>
-          <p id="lngText" class="font-mono text-sm font-bold text-slate-200 mt-0.5">0.000000</p>
-        </div>
-        <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80">
-          <p class="text-[10px] text-slate-500 font-medium uppercase">Accuracy Radius</p>
-          <p id="accText" class="font-mono text-sm font-semibold text-brand-500 mt-0.5">0 m</p>
-        </div>
-        <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80">
-          <p class="text-[10px] text-slate-500 font-medium uppercase">Speed / Alt</p>
-          <p id="extraStatsText" class="font-mono text-sm font-semibold text-slate-300 mt-0.5">N/A</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Action Bar Controls -->
-    <div class="bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-2xl p-2 shadow-2xl flex items-center justify-between gap-2">
-      <!-- Find Location Button -->
-      <button onclick="locateUser(true)" class="flex-1 bg-brand-600 hover:bg-brand-500 active:scale-95 text-white py-2.5 px-4 rounded-xl font-medium text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-brand-600/20">
-        <i class="fa-solid fa-crosshairs text-base"></i>
-        <span>Find My Location</span>
-      </button>
-
-      <!-- Live Tracking Toggle Button -->
-      <button id="trackBtn" onclick="toggleTracking()" class="bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 py-2.5 px-3.5 rounded-xl font-medium text-xs sm:text-sm flex items-center justify-center gap-2 border border-slate-700 transition-all" title="Toggle Live Tracking">
-        <i id="trackIcon" class="fa-solid fa-route text-slate-400"></i>
-        <span id="trackStatusText" class="hidden sm:inline">Track Off</span>
-      </button>
-    </div>
-  </div>
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Leaflet Routing Machine JS -->
+  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
   <script>
-    // Global State & Map Variables
-    let map;
-    let userMarker = null;
-    let accuracyCircle = null;
-    let watchId = null;
-    let isTracking = false;
-
-    // Default Fallback View (London Center)
-    const DEFAULT_LAT = 51.505;
-    const DEFAULT_LNG = -0.09;
-    const DEFAULT_ZOOM = 13;
-
-    // Initialize Map on window load
-    window.onload = function() {
-      initMap();
-      // Auto-trigger location search on load
-      locateUser(false);
-    };
+    let map, userMarker, routingControl;
+    let currentCoords = null;
 
     function initMap() {
-      // Initialize Leaflet map with zoom control hidden (custom styled)
-      map = L.map('map', {
-        zoomControl: false
-      }).setView([DEFAULT_LAT, DEFAULT_LNG], DEFAULT_ZOOM);
+      // Create map centered initially on world view
+      map = L.map('map').setView([20, 0], 2);
 
-      // OpenStreetMap Standard Tiles
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      // OpenStreetMap standard tile layer
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
       }).addTo(map);
 
-      // Add re-positioned zoom control to top-right
-      L.control.zoom({ position: 'topright' }).addTo(map);
+      // Listen for clicks on the map to set a route destination
+      map.on('click', onMapClick);
+
+      startTracking();
     }
 
-    // Single trigger location lookup
-    function locateUser(centerOnMap = true) {
+    function startTracking() {
+      const statusElem = document.getElementById('status');
+
       if (!navigator.geolocation) {
-        showStatus('Geolocation is not supported by your browser.', 'error');
+        statusElem.textContent = "Geolocation is not supported by your browser.";
         return;
       }
 
-      showStatus('Fetching GPS position...', 'info');
-
-      navigator.geolocation.getCurrentPosition(
+      navigator.geolocation.watchPosition(
         (position) => {
-          updatePosition(position, centerOnMap);
-          showStatus('Location updated successfully', 'success');
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          currentCoords = [lat, lng];
+
+          if (!userMarker) {
+            map.setView(currentCoords, 15);
+
+            // Custom Blue Marker for User Location
+            userMarker = L.circleMarker(currentCoords, {
+              radius: 9,
+              fillColor: '#3b82f6',
+              color: '#ffffff',
+              weight: 3,
+              opacity: 1,
+              fillOpacity: 0.9
+            }).addTo(map).bindPopup("You are here");
+
+            statusElem.textContent = "Tap anywhere on the map to route to that location.";
+          } else {
+            userMarker.setLatLng(currentCoords);
+            // Update routing starting point dynamically if a route exists
+            if (routingControl) {
+              routingControl.spliceWaypoints(0, 1, L.latLng(lat, lng));
+            }
+          }
         },
         (error) => {
-          handleGeoError(error);
+          statusElem.textContent = "Location access denied or unavailable.";
         },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
-        }
+        { enableHighAccuracy: true }
       );
     }
 
-    // Toggle Continuous WatchPosition
-    function toggleTracking() {
-      if (isTracking) {
-        // Stop tracking
-        if (watchId !== null) {
-          navigator.geolocation.clearWatch(watchId);
-          watchId = null;
-        }
-        isTracking = false;
-        updateTrackingUI(false);
-        showStatus('Live tracking disabled', 'info');
-      } else {
-        // Start tracking
-        if (!navigator.geolocation) {
-          showStatus('Geolocation is not supported', 'error');
-          return;
-        }
+    function onMapClick(e) {
+      if (!currentCoords) {
+        alert("Waiting for GPS position fix...");
+        return;
+      }
 
-        isTracking = true;
-        updateTrackingUI(true);
-        showStatus('Starting live tracking...', 'info');
+      const destLat = e.latlng.lat;
+      const destLng = e.latlng.lng;
 
-        watchId = navigator.geolocation.watchPosition(
-          (position) => {
-            updatePosition(position, true);
-            showStatus('Live tracking active', 'success');
-          },
-          (error) => {
-            handleGeoError(error);
-            toggleTracking(); // Disable tracking on failure
-          },
-          {
-            enableHighAccuracy: true,
-            timeout: 15000,
-            maximumAge: 0
-          }
-        );
+      // Remove existing route if present
+      if (routingControl) {
+        map.removeControl(routingControl);
+      }
+
+      // Calculate route using OSRM engine
+      routingControl = L.Routing.control({
+        waypoints: [
+          L.latLng(currentCoords[0], currentCoords[1]), // Start: Current GPS
+          L.latLng(destLat, destLng)                    // End: Clicked Destination
+        ],
+        lineOptions: {
+          styles: [{ color: '#2563eb', weight: 6, opacity: 0.8 }]
+        },
+        routeWhileDragging: false,
+        addWaypoints: false,
+        collapsible: true
+      }).addTo(map);
+
+      document.getElementById('status').textContent = "Route calculated!";
+    }
+
+    function clearRoute() {
+      if (routingControl) {
+        map.removeControl(routingControl);
+        routingControl = null;
+        document.getElementById('status').textContent = "Tap anywhere on the map to route to that location.";
       }
     }
 
-    // Update map marker, popup, and info panel with GPS data
-    function updatePosition(position, centerOnMap) {
-      const lat = position.coords.latitude;
-      const lng = position.coords.longitude;
-      const accuracy = position.coords.accuracy;
-      const speed = position.coords.speed ? (position.coords.speed * 3.6).toFixed(1) + ' km/h' : null;
-      const alt = position.coords.altitude ? Math.round(position.coords.altitude) + 'm alt' : null;
-      const timestamp = new Date(position.timestamp).toLocaleTimeString();
-
-      const latLng = [lat, lng];
-
-      // Create Custom Animated Pulse Marker Icon
-      const pulseIcon = L.divIcon({
-        className: 'gps-pulse-marker',
-        html: '<div class="gps-pulse-ring"></div><div class="gps-pulse-core"></div>',
-        iconSize: [40, 40],
-        iconAnchor: [20, 20]
-      });
-
-      // Update or Create Marker
-      if (userMarker) {
-        userMarker.setLatLng(latLng);
-      } else {
-        userMarker = L.marker(latLng, { icon: pulseIcon }).addTo(map);
-      }
-
-      // Update or Create Accuracy Circle
-      if (accuracyCircle) {
-        accuracyCircle.setLatLng(latLng);
-        accuracyCircle.setRadius(accuracy);
-      } else {
-        accuracyCircle = L.circle(latLng, {
-          radius: accuracy,
-          color: '#3b82f6',
-          fillColor: '#3b82f6',
-          fillOpacity: 0.15,
-          weight: 1.5
-        }).addTo(map);
-      }
-
-      // Update Leaflet Popup
-      const popupContent = `
-        <div class="p-1 font-sans">
-          <div class="font-bold text-brand-500 text-xs mb-1"><i class="fa-solid fa-location-dot"></i> Your Location</div>
-          <div class="font-mono text-[11px] text-slate-300">${lat.toFixed(5)}, ${lng.toFixed(5)}</div>
-          <div class="text-[10px] text-slate-400 mt-1">Accuracy: ±${Math.round(accuracy)} meters</div>
-        </div>
-      `;
-      userMarker.bindPopup(popupContent);
-
-      // Pan/Zoom map if requested
-      if (centerOnMap) {
-        map.flyTo(latLng, 16, { animate: true, duration: 1.2 });
-      }
-
-      // Populate Coordinates Info Card UI
-      document.getElementById('latText').textContent = lat.toFixed(5);
-      document.getElementById('lngText').textContent = lng.toFixed(5);
-      document.getElementById('accText').textContent = `±${Math.round(accuracy)} m`;
-      document.getElementById('extraStatsText').textContent = [speed, alt].filter(Boolean).join(' | ') || 'Static';
-      document.getElementById('timestampText').textContent = timestamp;
-      document.getElementById('infoCard').classList.remove('hidden');
-    }
-
-    // Address Search Function via Nominatim API
-    async function searchLocation() {
-      const query = document.getElementById('searchInput').value.trim();
-      if (!query) return;
-
-      showStatus('Searching address...', 'info');
-
-      try {
-        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
-        const data = await response.json();
-
-        if (data && data.length > 0) {
-          const lat = parseFloat(data[0].lat);
-          const lon = parseFloat(data[0].lon);
-          map.flyTo([lat, lon], 14, { animate: true });
-          
-          L.popup()
-            .setLatLng([lat, lon])
-            .setContent(`<div class="p-1 text-xs font-medium text-slate-200">${data[0].display_name}</div>`)
-            .openOn(map);
-
-          showStatus('Location found', 'success');
-        } else {
-          showStatus('No results found for search query.', 'error');
-        }
-      } catch (err) {
-        showStatus('Search failed. Check network connection.', 'error');
+    function centerOnUser() {
+      if (currentCoords) {
+        map.setView(currentCoords, 16);
       }
     }
 
-    // UI Helper: Live Tracking Button Toggle
-    function updateTrackingUI(active) {
-      const btn = document.getElementById('trackBtn');
-      const icon = document.getElementById('trackIcon');
-      const text = document.getElementById('trackStatusText');
-
-      if (active) {
-        btn.className = "bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white py-2.5 px-3.5 rounded-xl font-medium text-xs sm:text-sm flex items-center justify-center gap-2 border border-emerald-500 transition-all shadow-lg shadow-emerald-600/20";
-        icon.className = "fa-solid fa-satellite-dish animate-spin text-white";
-        text.textContent = "Live Tracking";
-      } else {
-        btn.className = "bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 py-2.5 px-3.5 rounded-xl font-medium text-xs sm:text-sm flex items-center justify-center gap-2 border border-slate-700 transition-all";
-        icon.className = "fa-solid fa-route text-slate-400";
-        text.textContent = "Track Off";
-      }
-    }
-
-    // UI Helper: Status Toast Messages
-    function showStatus(msg, type = 'info') {
-      const alertElem = document.getElementById('statusAlert');
-      const msgElem = document.getElementById('statusMessage');
-      const iconElem = document.getElementById('statusIcon');
-
-      alertElem.classList.remove('hidden');
-      msgElem.textContent = msg;
-
-      if (type === 'error') {
-        alertElem.className = "bg-red-500/10 border border-red-500/30 backdrop-blur-md text-red-300 rounded-xl p-3 text-xs flex items-center gap-2.5 shadow-lg";
-        iconElem.className = "fa-solid fa-circle-xmark text-red-400";
-      } else if (type === 'success') {
-        alertElem.className = "bg-emerald-500/10 border border-emerald-500/30 backdrop-blur-md text-emerald-300 rounded-xl p-3 text-xs flex items-center gap-2.5 shadow-lg";
-        iconElem.className = "fa-solid fa-circle-check text-emerald-400";
-      } else {
-        alertElem.className = "bg-blue-500/10 border border-blue-500/30 backdrop-blur-md text-blue-300 rounded-xl p-3 text-xs flex items-center gap-2.5 shadow-lg";
-        iconElem.className = "fa-solid fa-circle-info text-blue-400";
-      }
-
-      // Auto dismiss success/info messages after 4 seconds
-      if (type !== 'error') {
-        setTimeout(() => {
-          alertElem.classList.add('hidden');
-        }, 4000);
-      }
-    }
-
-    // Geolocation Error Handling
-    function handleGeoError(error) {
-      switch (error.code) {
-        case error.PERMISSION_DENIED:
-          showStatus("Location permission denied. Please allow location access in browser settings.", "error");
-          break;
-        case error.POSITION_UNAVAILABLE:
-          showStatus("Location information is unavailable. Ensure GPS is enabled.", "error");
-          break;
-        case error.TIMEOUT:
-          showStatus("GPS request timed out. Please try again.", "error");
-          break;
-        default:
-          showStatus("An unknown geolocation error occurred.", "error");
-          break;
-      }
-    }
+    window.onload = initMap;
   </script>
+
 </body>
 </html>
