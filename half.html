@@ -3,16 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Sheffield AR & Map Navigator</title>
+  <title>Sheffield Skyline AR & Map Navigator</title>
 
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <!-- Leaflet Routing Machine CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
-
-  <!-- AR.js + A-Frame for Location-based AR -->
-  <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
 
   <style>
     * {
@@ -27,6 +23,8 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background-color: #0f172a;
       color: #f8fafc;
+    }
+    body {
       display: flex;
       flex-direction: column;
     }
@@ -48,7 +46,7 @@
       font-weight: 600;
     }
 
-    /* Split Screen Container */
+    /* Main Container: Split View */
     #main-container {
       flex: 1;
       display: flex;
@@ -57,7 +55,7 @@
       position: relative;
     }
 
-    /* Top Half: Camera AR View */
+    /* Top Split: Camera + Floating Overlay */
     #ar-view {
       height: 50%;
       width: 100%;
@@ -65,15 +63,51 @@
       overflow: hidden;
       background-color: #000;
     }
-    /* Constrain A-Frame Scene to top half */
-    .a-canvas {
-      height: 100% !important;
-      width: 100% !important;
-      top: 0 !important;
-      left: 0 !important;
+
+    #webcam {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      position: absolute;
+      top: 0;
+      left: 0;
     }
 
-    /* Bottom Half: Leaflet Map View */
+    /* Container for Clickable AR Overlay Labels */
+    #ar-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none; /* Let clicks pass through except on buttons */
+      z-index: 10;
+    }
+
+    .ar-label {
+      position: absolute;
+      pointer-events: auto;
+      transform: translate(-50%, -50%);
+      background: rgba(15, 23, 42, 0.85);
+      color: #38bdf8;
+      border: 1px solid #0284c7;
+      padding: 0.4rem 0.8rem;
+      border-radius: 1rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+      backdrop-filter: blur(4px);
+      transition: all 0.2s ease;
+    }
+    .ar-label:active {
+      transform: translate(-50%, -50%) scale(0.95);
+      background: #0284c7;
+      color: #ffffff;
+    }
+
+    /* Bottom Split: Leaflet Map */
     #map-view {
       height: 50%;
       width: 100%;
@@ -103,17 +137,17 @@
       pointer-events: none;
     }
 
-    /* Adjust Leaflet controls in bottom split */
+    /* Leaflet Routing Box Adjustment */
     .leaflet-routing-container {
       background-color: rgba(15, 23, 42, 0.95) !important;
       color: #f8fafc !important;
       max-height: calc(50vh - 60px) !important;
-      width: 240px !important;
+      width: 220px !important;
       overflow-y: auto !important;
-      font-size: 0.8rem;
+      font-size: 0.75rem;
     }
 
-    /* Landscape adjustments: Side-by-side split */
+    /* Landscape Side-by-Side View */
     @media (orientation: landscape) {
       #main-container {
         flex-direction: row;
@@ -122,31 +156,33 @@
         height: 100%;
         width: 50%;
       }
+      .leaflet-routing-container {
+        max-height: calc(100vh - 80px) !important;
+      }
     }
   </style>
 </head>
 <body>
 
   <header>
-    <h1>AR Skyline Navigator</h1>
-    <button onclick="clearRoute()" style="padding: 0.3rem 0.6rem; background:#dc2626; color:white; border:none; border-radius:0.25rem; cursor:pointer;">Clear Route</button>
+    <h1>Skyline Navigator</h1>
+    <button onclick="clearRoute()" style="padding: 0.3rem 0.6rem; background:#dc2626; color:white; border:none; border-radius:0.25rem; cursor:pointer; font-size:0.8rem;">Clear Route</button>
   </header>
 
   <div id="main-container">
-    <!-- Top Half: AR Camera View -->
+    <!-- Top Half: Camera View + AR Overlay -->
     <div id="ar-view">
-      <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false">
-        <a-camera gps-camera rotation-reader></a-camera>
-      </a-scene>
+      <video id="webcam" autoplay playsinline muted></video>
+      <div id="ar-overlay"></div>
     </div>
 
-    <!-- Bottom Half: Interactive Leaflet Map -->
+    <!-- Bottom Half: Leaflet Map -->
     <div id="map-view">
       <div id="map"></div>
     </div>
   </div>
 
-  <div id="status">Initializing GPS and AR sensors...</div>
+  <div id="status">Allowing camera and GPS access...</div>
 
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -156,18 +192,25 @@
   <script>
     let map, userMarker, routingControl;
     let currentCoords = null;
+    let heading = 0; // Phone Compass Heading
 
-    // Preset Sheffield Landmarks (Replace or add your own!)
+    // Sheffield Landmark Coordinates
     const landmarks = [
-      { name: "Sheffield Town Hall", lat: 53.3807, lng: -1.4701 },
-      { name: "Winter Garden", lat: 53.3802, lng: -1.4673 },
-      { name: "Sheffield Cathedral", lat: 53.3826, lng: -1.4697 },
-      { name: "Peveril of the Peak / Station", lat: 53.3780, lng: -1.4629 }
+      { name: "📍 Town Hall", lat: 53.3807, lng: -1.4701 },
+      { name: "📍 Winter Garden", lat: 53.3802, lng: -1.4673 },
+      { name: "📍 Cathedral", lat: 53.3826, lng: -1.4697 },
+      { name: "📍 Station", lat: 53.3780, lng: -1.4629 }
     ];
+
+    function initApp() {
+      initMap();
+      startWebcam();
+      startSensors();
+    }
 
     function initMap() {
       map = L.map('map', { zoomControl: false }).setView([53.3807, -1.4701], 14);
-      
+
       L.control.zoom({ position: 'bottomleft' }).addTo(map);
 
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -175,72 +218,134 @@
         attribution: '&copy; OpenStreetMap'
       }).addTo(map);
 
-      // Plot landmarks as clickable markers on map
+      // Plot landmarks as pins on map
       landmarks.forEach(lm => {
         const m = L.marker([lm.lat, lm.lng]).addTo(map);
-        m.bindPopup(`<b>${lm.name}</b><br><button onclick="routeTo(${lm.lat}, ${lm.lng}, '${lm.name}')">Directions</button>`);
+        m.bindPopup(`<b>${lm.name}</b><br><button onclick="routeTo(${lm.lat}, ${lm.lng}, '${lm.name}')">Route Here</button>`);
       });
 
-      startTracking();
-      loadARMarkers();
+      // Create AR HTML Buttons for each landmark
+      const overlay = document.getElementById('ar-overlay');
+      landmarks.forEach((lm, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'ar-label';
+        btn.id = `ar-lm-${idx}`;
+        btn.innerText = lm.name;
+        btn.onclick = () => routeTo(lm.lat, lm.lng, lm.name);
+        overlay.appendChild(btn);
+      });
     }
 
-    // Dynamic creation of 3D text in AR camera view
-    function loadARMarkers() {
-      const scene = document.querySelector('a-scene');
-
-      landmarks.forEach(lm => {
-        const entity = document.createElement('a-text');
-        entity.setAttribute('value', lm.name);
-        entity.setAttribute('scale', '15 15 15');
-        entity.setAttribute('color', '#38bdf8');
-        entity.setAttribute('align', 'center');
-        entity.setAttribute('gps-entity-place', `latitude: ${lm.lat}; longitude: ${lm.lng};`);
-        
-        // When user taps landmark text floating in AR view
-        entity.addEventListener('click', () => {
-          routeTo(lm.lat, lm.lng, lm.name);
+    // Start Webcam strictly inside top container
+    async function startWebcam() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { exact: "environment" } },
+          audio: false
         });
+        document.getElementById('webcam').srcObject = stream;
+      } catch (err) {
+        // Fallback to default camera if exact environment camera isn't available
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+          document.getElementById('webcam').srcObject = stream;
+        } catch (e) {
+          document.getElementById('status').textContent = "Camera access denied.";
+        }
+      }
+    }
 
-        scene.appendChild(entity);
+    // Sensor & Geolocation Tracking
+    function startSensors() {
+      // Compass / Orientation
+      if (window.DeviceOrientationEvent) {
+        window.addEventListener('deviceorientation', (e) => {
+          if (e.webkitCompassHeading) {
+            heading = e.webkitCompassHeading; // iOS
+          } else if (e.alpha) {
+            heading = 360 - e.alpha; // Android
+          }
+          updateAROverlay();
+        });
+      }
+
+      // GPS Tracking
+      if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(
+          (pos) => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            currentCoords = [lat, lng];
+
+            if (!userMarker) {
+              map.setView(currentCoords, 15);
+              userMarker = L.circleMarker(currentCoords, {
+                radius: 8,
+                fillColor: '#2563eb',
+                color: '#ffffff',
+                weight: 3,
+                fillOpacity: 1
+              }).addTo(map).bindPopup("You are here");
+
+              document.getElementById('status').textContent = "Pan camera to view landmarks or tap to navigate.";
+            } else {
+              userMarker.setLatLng(currentCoords);
+              if (routingControl) {
+                routingControl.spliceWaypoints(0, 1, L.latLng(lat, lng));
+              }
+            }
+            updateAROverlay();
+          },
+          (err) => {
+            document.getElementById('status').textContent = "Waiting for GPS fix...";
+          },
+          { enableHighAccuracy: true }
+        );
+      }
+    }
+
+    // Math: Position AR labels on camera screen based on Compass + GPS
+    function updateAROverlay() {
+      if (!currentCoords) return;
+
+      const overlay = document.getElementById('ar-overlay');
+      const width = overlay.clientWidth;
+      const height = overlay.clientHeight;
+      const fov = 60; // Camera Field of View in degrees
+
+      landmarks.forEach((lm, idx) => {
+        const btn = document.getElementById(`ar-lm-${idx}`);
+        
+        // Calculate bearing from user location to landmark
+        const bearing = getBearing(currentCoords[0], currentCoords[1], lm.lat, lm.lng);
+        
+        // Calculate relative angle difference
+        let diff = bearing - heading;
+        while (diff < -180) diff += 360;
+        while (diff > 180) diff -= 360;
+
+        // If landmark is inside camera field of view (~60 degrees)
+        if (Math.abs(diff) < fov / 2) {
+          const xPercent = 50 + (diff / (fov / 2)) * 50;
+          btn.style.left = `${xPercent}%`;
+          btn.style.top = `50%`;
+          btn.style.display = 'block';
+        } else {
+          btn.style.display = 'none'; // Hide if pointing away
+        }
       });
     }
 
-    function startTracking() {
-      if (!navigator.geolocation) return;
-
-      navigator.geolocation.watchPosition(
-        (pos) => {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          currentCoords = [lat, lng];
-
-          if (!userMarker) {
-            map.setView(currentCoords, 15);
-            userMarker = L.circleMarker(currentCoords, {
-              radius: 8,
-              fillColor: '#2563eb',
-              color: '#ffffff',
-              weight: 3,
-              fillOpacity: 1
-            }).addTo(map).bindPopup("You are here");
-
-            document.getElementById('status').textContent = "Tap a landmark on the camera or map to navigate.";
-          } else {
-            userMarker.setLatLng(currentCoords);
-            if (routingControl) {
-              routingControl.spliceWaypoints(0, 1, L.latLng(lat, lng));
-            }
-          }
-        },
-        (err) => {
-          document.getElementById('status').textContent = "Waiting for GPS permissions...";
-        },
-        { enableHighAccuracy: true }
-      );
+    // Great Circle Bearing Formula
+    function getBearing(lat1, lon1, lat2, lon2) {
+      const φ1 = lat1 * Math.PI / 180, φ2 = lat2 * Math.PI / 180;
+      const Δλ = (lon2 - lon1) * Math.PI / 180;
+      const y = Math.sin(Δλ) * Math.cos(φ2);
+      const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+      return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
     }
 
-    // Triggered by tapping either camera AR text OR map pin
+    // Navigation function
     function routeTo(destLat, destLng, name) {
       if (!currentCoords) {
         alert("Waiting for GPS location fix...");
@@ -263,18 +368,18 @@
         collapsible: true
       }).addTo(map);
 
-      document.getElementById('status').textContent = `Routing to: ${name}`;
+      document.getElementById('status').textContent = `Navigating to: ${name}`;
     }
 
     function clearRoute() {
       if (routingControl) {
         map.removeControl(routingControl);
         routingControl = null;
-        document.getElementById('status').textContent = "Tap a landmark on camera or map to navigate.";
+        document.getElementById('status').textContent = "Pan camera to view landmarks or tap to navigate.";
       }
     }
 
-    window.onload = initMap;
+    window.onload = initApp;
   </script>
 
 </body>
